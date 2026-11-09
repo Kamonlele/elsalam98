@@ -6,6 +6,12 @@ Copia del Kamon Showcase Kit. Aggiornato da Claude a fine sessione.
 
 **2026-11-09**: rifacimento di elsalam98.net (WordPress + Elementor + GTranslate) con il kit.
 
+## Demo
+
+- **https://elsalam98-demo.vercel.app** (Vercel, team d47, progetto `elsalam98-demo`), pubblica ma nascosta a Google (noindex).
+- È una copia statica in `demo/`: si rifà con `npm run build`, `astro preview` e `wget --mirror` (vedi sessione 9/11).
+  Ogni push su `main` la ripubblica.
+
 ## Cosa c'è
 
 - Lingue: inglese (principale, su `/`), italiano `/it/`, francese `/fr/`, arabo `/ar/` da destra a sinistra.
