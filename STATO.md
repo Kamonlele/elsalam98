@@ -9,7 +9,9 @@ Copia del Kamon Showcase Kit. Aggiornato da Claude a fine sessione.
 ## Demo
 
 - **https://elsalam98-demo.vercel.app** (Vercel, team d47, progetto `elsalam98-demo`), pubblica ma nascosta a Google (noindex).
-- È una copia statica in `demo/`: si rifà con `npm run build`, `astro preview` e `wget --mirror` (vedi sessione 9/11).
+- È una copia statica in `demo/`. Per rifarla: `npm run build`, `astro preview`, scaricare solo le pagine HTML con wget,
+  poi copiare `_astro/`, `archive/` e `brand/` da `dist/client/` e togliere ogni `http://localhost`.
+  Non usare `wget --page-requisites`: il 9/11 ha lasciato file mancanti e la demo è uscita senza stili.
   Ogni push su `main` la ripubblica.
 
 ## Cosa c'è
