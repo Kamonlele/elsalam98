@@ -478,3 +478,72 @@ h1, h2, h3 { font-weight: 500; letter-spacing: -0.012em; line-height: 1.08; }
 .langs a { unicode-bidi: isolate; }
 .page-view + .blk { padding-top: clamp(12px, 2vw, 28px); }
 .brand, .nav-links a { white-space: nowrap; }
+
+/* ---------- Rifinitura grafica ---------- */
+/* Apertura: più scura verso il testo, la foto si muove appena (solo senza movimento ridotto). */
+.hero-media::after { background:
+  linear-gradient(to top, rgba(5, 10, 16, 0.82), rgba(5, 10, 16, 0.18) 60%, rgba(5, 10, 16, 0.35)),
+  linear-gradient(to right, rgba(5, 10, 16, 0.55), transparent 65%); }
+[dir="rtl"] .hero-media::after { background:
+  linear-gradient(to top, rgba(5, 10, 16, 0.82), rgba(5, 10, 16, 0.18) 60%, rgba(5, 10, 16, 0.35)),
+  linear-gradient(to left, rgba(5, 10, 16, 0.55), transparent 65%); }
+@media (prefers-reduced-motion: no-preference) {
+  .hero-media img { animation: hero-drift 24s ease-out both; }
+  @keyframes hero-drift { from { transform: scale(1.08); } to { transform: scale(1); } }
+}
+.hero.has-media { min-height: 92svh; }
+.hero .btn { margin-top: 8px; }
+
+/* Numeri: un segno d'accento sopra ognuno. */
+.b-stats dl > div { position: relative; }
+.b-stats dl > div::before { content: ""; position: absolute; inset-inline-start: 0; top: -1px; width: 48px; height: 3px; background: var(--accent); }
+.b-stats dl > div:first-child dd { color: var(--accent); }
+
+/* Testo: il primo paragrafo apre come un attacco di giornale. */
+.b-text .paras p:first-child { font-family: var(--font-display); font-size: clamp(1.4rem, 2.2vw, 1.85rem); line-height: 1.4; color: var(--fg); max-width: 40ch; }
+.b-text { grid-template-columns: minmax(0, 1fr); }
+@media (min-width: 1000px) {
+  .b-text:has(> h1, > h2) { grid-template-columns: minmax(14rem, 0.8fr) 2fr; column-gap: clamp(32px, 5vw, 96px); align-items: start; }
+  .b-text:has(> h1, > h2) > h1, .b-text:has(> h1, > h2) > h2 { position: sticky; top: 104px; margin-bottom: 0; }
+}
+
+/* Testo e foto: la foto ha una cornice d'accento sfalsata. */
+.tp-photo { position: relative; }
+.tp-photo img { position: relative; z-index: 1; }
+.tp-photo::after { content: ""; position: absolute; inset: 14px -14px -14px 14px; border: 1px solid var(--accent); border-radius: var(--r-card); opacity: 0.5; }
+[dir="rtl"] .tp-photo::after { inset: 14px 14px -14px -14px; }
+
+/* Documenti: schede che si possono toccare. */
+.b-docs ul { gap: 16px; }
+.b-docs li { border: 1px solid var(--line); border-radius: var(--r-card); background: var(--surface); padding: 22px 24px; transition: border-color .25s, transform .25s cubic-bezier(.16,1,.3,1); }
+.b-docs li:hover { border-color: var(--accent); transform: translateY(-2px); }
+.b-docs li { position: relative; }
+.doc-main::after { content: ""; position: absolute; inset: 0; border-radius: inherit; }
+.doc-versions { position: relative; z-index: 1; }
+
+/* Invito finale: fascia con un velo d'accento. */
+.b-cta { background: color-mix(in srgb, var(--accent) 9%, var(--bg)); border-block: 1px solid color-mix(in srgb, var(--accent) 25%, transparent); }
+
+/* Cronologia: la data resta in vista mentre si legge la tappa. */
+.tl-date { font-size: clamp(1.25rem, 1.8vw, 1.6rem); line-height: 1.25; }
+@media (min-width: 761px) { .tl-date { position: sticky; top: 96px; align-self: start; } }
+.tl-body::before { width: 13px; height: 13px; inset-inline-start: -7px; top: 8px; background: var(--bg); border: 3px solid var(--accent); }
+
+/* Titolo delle pagine senza apertura. */
+.page-view { padding-block: 128px 8px; }
+.page-view h1 { font-size: clamp(2.8rem, 6vw, 5.2rem); padding-bottom: 20px; border-bottom: 1px solid var(--line); }
+.page-view h1::after { content: ""; display: block; width: 64px; height: 3px; background: var(--accent); margin-top: 20px; margin-bottom: -23px; }
+
+/* Piè di pagina più completo. */
+footer { border-top: 1px solid var(--line); padding-block: 56px 40px; background: var(--surface-2); }
+footer .wrap.foot { display: grid; grid-template-columns: 1.4fr 1fr 1fr; gap: 32px 48px; align-items: start; }
+.foot-brand { display: grid; gap: 12px; }
+.foot-brand .brand { color: var(--fg); }
+.foot-tag { font-family: var(--font-display); font-style: italic; font-size: 1.15rem; color: var(--fg); }
+.foot-nav, .foot-langs { display: grid; gap: 10px; }
+.foot-nav a, .foot-langs a { text-decoration: none; color: var(--muted); }
+.foot-nav a:hover, .foot-langs a:hover, .foot-langs a[aria-current] { color: var(--fg); }
+footer .legal { grid-column: 1 / -1; }
+@media (max-width: 760px) { footer .wrap.foot { grid-template-columns: 1fr 1fr; } .foot-brand { grid-column: 1 / -1; } }
+:lang(ar) .foot-tag { font-style: normal; }
+.blk { padding-block: clamp(48px, 7vw, 96px); }

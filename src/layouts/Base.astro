@@ -129,10 +129,22 @@ const legal = (['privacy', 'cookie'] as const).flatMap((kind) => {
       <slot />
     </main>
     <footer>
-      <div class="wrap">
-        <span>{brand.identity.name}</span>
-        {(brand.contact.email || brand.contact.phone) && <span>{[brand.contact.email, brand.contact.phone].filter(Boolean).join(' · ')}</span>}
-        <span>{t(brand.identity.tagline, locale)}</span>
+      <div class="wrap foot">
+        <div class="foot-brand">
+          <a class="brand" href={url(locale)}>{(brand.identity as { logo?: string }).logo && <img src={(brand.identity as { logo?: string }).logo} alt="" width="32" height="32" />}<span>{brand.identity.name}</span></a>
+          <p class="foot-tag">{t(brand.identity.tagline, locale)}</p>
+          {(brand.contact.email || brand.contact.phone) && <p>{[brand.contact.email, brand.contact.phone].filter(Boolean).join(' · ')}</p>}
+        </div>
+        {links.length > 0 && (
+          <nav class="foot-nav" aria-label={ui(locale, 'menu')}>
+            {links.map((l) => <a href={l.href}>{l.label}</a>)}
+          </nav>
+        )}
+        {LOCALES.length > 1 && (
+          <nav class="foot-langs" aria-label={ui(locale, 'languages')}>
+            {LOCALES.map((l) => <a href={alternates[l] ?? url(l)} hreflang={l} lang={l} aria-current={l === locale ? 'true' : undefined}>{LOCALE_NAMES[l]}</a>)}
+          </nav>
+        )}
         {(legal.length > 0 || iubenda) && (
           <span class="legal">
             {legal.map((l) => <a href={l.href}>{l.label}</a>)}
