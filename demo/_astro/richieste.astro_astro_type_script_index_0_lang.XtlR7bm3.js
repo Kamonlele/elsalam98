@@ -1,0 +1,1 @@
+import{r as e,t}from"./ui.9nQCS_HP.js";document.getElementById(`leads`)?.addEventListener(`click`,async n=>{let r=n.target.closest(`button[data-status]`),i=r?.closest(`[data-id]`);if(r&&i){r.disabled=!0;try{await t(`/api/admin/richieste/${i.dataset.id}`,{method:`PATCH`,json:{status:r.dataset.status}}),location.reload()}catch(t){e(t.message,`error`),r.disabled=!1}}});
