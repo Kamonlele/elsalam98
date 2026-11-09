@@ -1,0 +1,62 @@
+---
+import type { Locale } from '../lib/brand';
+import type { Product } from '../lib/content';
+import { t, ui } from '../lib/i18n';
+import Img from './Img.astro';
+
+interface Props { locale: Locale; product: Product; specs: boolean; bookable: boolean }
+const { locale, product, specs, bookable } = Astro.props;
+const stages = product.stages;
+const last = stages.length - 1;
+const photo = product.scene.mode === 'photo';
+const labels = stages.every((s) => s.label) ? stages.map((s) => t(s.label, locale)) : [];
+---
+<section
+  id="scena"
+  class:list={['scene', photo && 'scene--photo']}
+  data-mode={product.scene.mode}
+  data-model={product.scene.model}
+  style={`--n:${stages.length}`}
+  aria-label={t(product.name, locale)}
+>
+  <div class="sticky">
+    {!photo && <canvas id="scene-canvas" aria-hidden="true"></canvas>}
+    {photo && (
+      <div class="photo-frame" aria-hidden="true">
+        <div class="frame">
+          {stages.map((s, i) => s.photo && <Img src={s.photo} alt="" sizes="(min-width: 861px) 60vw, 100vw" eager={i === 0} />)}
+        </div>
+      </div>
+    )}
+    <div class="stages">
+      {stages.map((s, i) => (
+        <div class:list={['stage', i === 0 && 'live on']} data-i={i}>
+          {photo && s.photo && <div class="ph"><Img src={s.photo} alt={t(s.title, locale)} sizes="100vw" /></div>}
+          {i === 0 && product.kicker && <span class="kicker">{t(product.kicker, locale)}</span>}
+          {i === 0 ? <h1>{t(s.title, locale)}</h1> : <h2>{t(s.title, locale)}</h2>}
+          <p>{t(s.text, locale)}</p>
+          {i === 0 && (bookable || specs) && (
+            <div class="ctas">
+              {bookable && <a class="btn" href="#visita">{ui(locale, 'book')}</a>}
+              {specs && <a class="btn ghost" href="#scheda">{ui(locale, 'specs')}</a>}
+            </div>
+          )}
+          {i === last && i !== 0 && bookable && (
+            <div class="ctas"><a class="btn" href="#visita">{ui(locale, 'book')}</a></div>
+          )}
+        </div>
+      ))}
+    </div>
+    {labels.length > 0 && (
+      <div class="progress" aria-hidden="true">
+        {labels.map((l, i) => <span class:list={[i === 0 && 'on']}>{l}</span>)}
+      </div>
+    )}
+  </div>
+</section>
+
+<script>
+  import { initScene } from '../scripts/scene';
+  const root = document.getElementById('scena');
+  if (root) initScene(root);
+</script>

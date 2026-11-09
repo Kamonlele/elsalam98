@@ -1,0 +1,59 @@
+---
+import Base from '../layouts/Base.astro';
+import Img from './Img.astro';
+import PostCard from './PostCard.astro';
+import { blog, brand, DEFAULT_LOCALE, type Locale } from '../lib/brand';
+import type { Post } from '../lib/content';
+import { t, ui, url } from '../lib/i18n';
+import { readingMinutes, renderDoc } from '../lib/richtext';
+import { blogSegment, postsPageUrl, publicUrl } from '../lib/routes';
+import { breadcrumbLd, DESCRIPTION_MAX, postLd, postSummary } from '../lib/seo';
+import { formatDay } from '../lib/text';
+
+/** Un articolo. `others` sono gli articoli visibili, dal più recente: se ne mostrano 3 diversi da questo. */
+interface Props { locale: Locale; post: Post; others: Post[]; alternates: Partial<Record<Locale, string>> }
+const { locale, post, others, alternates } = Astro.props;
+const origin = brand.identity.siteUrl.replace(/\/$/, '');
+const title = t(post.seo?.title, locale) || `${t(post.title, locale)} | ${brand.identity.name}`;
+const description = t(post.seo?.description, locale) || postSummary(post, locale, DESCRIPTION_MAX) || undefined;
+const more = others.filter((p) => p.id !== post.id).slice(0, 3);
+const minutes = readingMinutes(post.body);
+const crumbs = breadcrumbLd([
+  { name: ui(locale, 'crumbHome'), url: url(locale) },
+  { name: t(blog.title, locale), url: postsPageUrl(locale, 1) },
+  { name: t(post.title, locale), url: publicUrl('posts', post, locale) },
+], origin);
+---
+<Base
+  locale={locale}
+  title={title}
+  description={description}
+  alternates={alternates}
+  image={post.seo?.image || post.cover}
+  type="article"
+  published={post.date}
+  jsonLd={[postLd(post, locale, origin), crumbs]}
+  feed={`/${blogSegment(DEFAULT_LOCALE)}/rss.xml`}
+>
+  <article class="wrap post">
+    <header class="post-head">
+      <a class="post-back" href={postsPageUrl(locale, 1)}>{t(blog.title, locale)}</a>
+      <h1>{t(post.title, locale)}</h1>
+      <p class="post-meta">
+        <time datetime={post.date}>{formatDay(post.date, locale)}</time>
+        {post.author && <> · {ui(locale, 'by')} {post.author}</>}
+        {' · '}{minutes} {ui(locale, 'readMin')}
+      </p>
+    </header>
+    {post.cover && (
+      <div class="post-cover"><Img src={post.cover} alt="" sizes="(min-width: 1100px) 1000px, 100vw" eager /></div>
+    )}
+    <div class="post-body" set:html={renderDoc(post.body)} />
+  </article>
+  {more.length > 0 && (
+    <section class="blk wrap b-cards post-more">
+      <h2>{ui(locale, 'morePosts')}</h2>
+      <div class="product-list post-list">{more.map((p) => <PostCard post={p} locale={locale} heading="h3" />)}</div>
+    </section>
+  )}
+</Base>

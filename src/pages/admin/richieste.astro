@@ -1,0 +1,82 @@
+---
+import Admin from '../../layouts/Admin.astro';
+import { booking, features } from '../../lib/brand';
+import { listLeads, type Lead } from '../../lib/leads';
+
+if (!features.leads) return Astro.redirect('/admin/prodotti');
+const rows = await listLeads();
+const when = (ms: number) => new Intl.DateTimeFormat('it-IT', { dateStyle: 'medium', timeStyle: 'short', timeZone: booking.timezone }).format(new Date(ms));
+const source = (l: Lead) => {
+  const s = l.source;
+  if (s.utm_source || s.utm_campaign) return [s.utm_source, s.utm_campaign].filter(Boolean).join(' · ');
+  if (s.gclid) return 'Google Ads';
+  if (s.fbclid) return 'Meta';
+  if (s.referrer) { try { return new URL(s.referrer).hostname.replace(/^www\./, ''); } catch { return s.referrer; } }
+  return 'Diretto';
+};
+---
+<Admin title="Richieste" current="richieste">
+  <div class="page">
+    <div class="page-head">
+      <div>
+        <h1>Richieste</h1>
+        <p>Chi ha compilato un modulo del sito. Segna come gestite quelle già richiamate.</p>
+      </div>
+      <a class="btn ghost" href="/api/admin/richieste.csv">Scarica tutte (CSV)</a>
+    </div>
+
+    {rows.length === 0 && (
+      <div class="empty">
+        <h2>Nessuna richiesta</h2>
+        <p>Le richieste arrivano dai moduli del sito e compaiono qui.</p>
+      </div>
+    )}
+
+    <div id="leads" class="stack">
+      {rows.map((l) => (
+        <article class:list={['bk', l.status === 'gestita' && 'annullata']} data-id={l.id}>
+          <div class="when"><b>{when(l.createdAt)}</b><span>{l.form}</span></div>
+          <div class="who">
+            <h3>{l.firstName} {l.lastName}</h3>
+            <div class="contact">
+              <a href={`tel:${l.phone.replace(/[^\d+]/g, '')}`}>{l.phone}</a>
+              <a href={`mailto:${l.email}`}>{l.email}</a>
+              {l.city && <span>{l.city}</span>}
+            </div>
+            <div class="facts">
+              {l.answers.map((a) => <span class="chip" title={a.label}>{a.label}: {a.value}</span>)}
+              {l.page && <span class="chip src" title="Pagina del modulo">{l.page}</span>}
+              <span class="chip src" title="Da dove è arrivato">{source(l)}</span>
+              <span class="chip src" title="Codice richiesta">{l.ref}</span>
+            </div>
+          </div>
+          <div class="side-acts">
+            <span class:list={['badge', l.status === 'nuova' ? 'nuova' : 'confermata']}>{l.status === 'nuova' ? 'Nuova' : 'Gestita'}</span>
+            <div class="acts">
+              {l.status === 'nuova'
+                ? <button class="btn small" type="button" data-status="gestita">Segna gestita</button>
+                : <button class="btn ghost small" type="button" data-status="nuova">Riapri</button>}
+            </div>
+          </div>
+        </article>
+      ))}
+    </div>
+  </div>
+</Admin>
+
+<script>
+  import { api, toast } from '../../scripts/admin/ui';
+  document.getElementById('leads')?.addEventListener('click', async (e) => {
+    const btn = (e.target as HTMLElement).closest<HTMLButtonElement>('button[data-status]');
+    const card = btn?.closest<HTMLElement>('[data-id]');
+    if (!btn || !card) return;
+    btn.disabled = true;
+    try {
+      await api(`/api/admin/richieste/${card.dataset.id}`, { method: 'PATCH', json: { status: btn.dataset.status } });
+      location.reload();
+    } catch (err) {
+      toast((err as Error).message, 'error');
+      btn.disabled = false;
+    }
+  });
+</script>

@@ -1,0 +1,24 @@
+---
+import type { Locale } from '../lib/brand';
+import { brand } from '../lib/brand';
+import type { Product } from '../lib/content';
+import { SEGMENTS, t, ui, url } from '../lib/i18n';
+import Img from './Img.astro';
+
+interface Props { locale: Locale; products: Product[] }
+const { locale, products } = Astro.props;
+---
+<section class="wrap home-hero">
+  <h1>{t(brand.identity.tagline, locale)}</h1>
+</section>
+<section class="wrap product-list" aria-label={ui(locale, 'products')}>
+  {products.map((p) => (
+    <a class="product-card" href={url(locale, SEGMENTS.products[locale], t(p.slug, locale))}>
+      <div class="pic">
+        {p.cover ? <Img src={p.cover} alt="" sizes="(min-width: 1000px) 33vw, (min-width: 600px) 50vw, 100vw" /> : <span>{t(p.name, locale)}</span>}
+      </div>
+      <h2>{t(p.name, locale)}</h2>
+      <p>{t(p.intro, locale)}</p>
+    </a>
+  ))}
+</section>

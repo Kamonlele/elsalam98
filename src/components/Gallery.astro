@@ -1,0 +1,70 @@
+---
+import type { Locale } from '../lib/brand';
+import type { Photo } from '../lib/content';
+import { t, ui } from '../lib/i18n';
+import Img from './Img.astro';
+
+interface Props { locale: Locale; photos: Photo[] }
+const { locale, photos } = Astro.props;
+---
+<section id="realizzazioni" aria-labelledby="real-t">
+  <div class="wrap gal-head">
+    <h2 id="real-t">{ui(locale, 'gallery')}</h2>
+    <p>{ui(locale, 'galleryIntro')}</p>
+  </div>
+  <div class="gal-track" id="gal" tabindex="0" aria-label={ui(locale, 'gallery')}>
+    {photos.map((ph, i) => (
+      <figure>
+        <button class="gal-item" type="button" data-i={i} aria-label={t(ph.caption, locale)}>
+          <Img src={ph.src} alt={t(ph.caption, locale)} width={ph.width} height={ph.height} sizes="(max-width: 860px) 86vw, min(72vw, 980px)" />
+        </button>
+        <figcaption>{t(ph.caption, locale)}</figcaption>
+      </figure>
+    ))}
+  </div>
+  <div class="wrap gal-nav">
+    <button class="btn ghost round" type="button" id="gal-prev" aria-label={ui(locale, 'prev')}>&larr;</button>
+    <button class="btn ghost round" type="button" id="gal-next" aria-label={ui(locale, 'next')}>&rarr;</button>
+  </div>
+  <dialog id="lb" aria-label={ui(locale, 'gallery')}>
+    <div class="lb-top"><button class="btn ghost small" type="button" id="lb-close">{ui(locale, 'close')}</button></div>
+    <div class="lb-img"><img id="lb-img" src="" alt="" /></div>
+    <div class="lb-bot">
+      <button class="btn ghost round" type="button" id="lb-prev" aria-label={ui(locale, 'prev')}>&larr;</button>
+      <span class="lb-cap" id="lb-cap"></span>
+      <button class="btn ghost round" type="button" id="lb-next" aria-label={ui(locale, 'next')}>&rarr;</button>
+    </div>
+  </dialog>
+</section>
+
+<script>
+  const gal = document.getElementById('gal')!;
+  const reduce = matchMedia('(prefers-reduced-motion: reduce)').matches;
+  const items = Array.from(gal.querySelectorAll<HTMLButtonElement>('.gal-item'));
+  const step = () => (items[0] ? items[0].getBoundingClientRect().width + 16 : 400);
+  const behavior: ScrollBehavior = reduce ? 'auto' : 'smooth';
+  document.getElementById('gal-prev')!.addEventListener('click', () => gal.scrollBy({ left: -step(), behavior }));
+  document.getElementById('gal-next')!.addEventListener('click', () => gal.scrollBy({ left: step(), behavior }));
+
+  const lb = document.getElementById('lb') as HTMLDialogElement;
+  const lbImg = document.getElementById('lb-img') as HTMLImageElement;
+  const lbCap = document.getElementById('lb-cap')!;
+  let cur = 0;
+  function show(i: number) {
+    cur = (i + items.length) % items.length;
+    const img = items[cur].querySelector('img')!;
+    lbImg.src = img.src; lbImg.alt = img.alt; lbCap.textContent = img.alt;
+  }
+  items.forEach((b, i) => b.addEventListener('click', () => { show(i); lb.showModal(); }));
+  document.getElementById('lb-prev')!.addEventListener('click', () => show(cur - 1));
+  document.getElementById('lb-next')!.addEventListener('click', () => show(cur + 1));
+  document.getElementById('lb-close')!.addEventListener('click', () => lb.close());
+  lb.addEventListener('keydown', (e) => {
+    if (e.key === 'ArrowRight') show(cur + 1);
+    if (e.key === 'ArrowLeft') show(cur - 1);
+  });
+  lb.addEventListener('click', (e) => {
+    const el = e.target as HTMLElement;
+    if (el === lb || el.classList.contains('lb-img')) lb.close();
+  });
+</script>

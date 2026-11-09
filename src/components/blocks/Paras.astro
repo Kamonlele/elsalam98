@@ -1,0 +1,9 @@
+---
+import { paragraphs } from '../../lib/text';
+
+/** Testo del cliente a paragrafi. Sempre testo semplice, mai HTML. */
+interface Props { text: string; class?: string }
+const { text, class: cls } = Astro.props;
+const list = paragraphs(text);
+---
+{list.length > 0 && <div class:list={['paras', cls]}>{list.map((p) => <p>{p}</p>)}</div>}

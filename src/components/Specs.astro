@@ -1,0 +1,33 @@
+---
+import type { Locale } from '../lib/brand';
+import type { Product } from '../lib/content';
+import { t, ui } from '../lib/i18n';
+
+interface Props { locale: Locale; specs: NonNullable<Product['specs']> }
+const { locale, specs } = Astro.props;
+---
+<section id="scheda" aria-labelledby="scheda-t">
+  <div class="wrap">
+    <div class="spec-grid">
+      <div class="spec-hero">
+        <h2 id="scheda-t">{ui(locale, 'specs')}</h2>
+        {specs.featured && (
+          <div class="measure">{specs.featured.value}<small>{t(specs.featured.label, locale)}</small></div>
+        )}
+      </div>
+      <div class="spec-groups">
+        {specs.groups.map((g) => (
+          <div class="group">
+            <h3>{t(g.title, locale)}</h3>
+            <dl>
+              {g.rows.map((r) => (
+                <div><dt>{t(r.label, locale)}</dt><dd>{t(r.value, locale)}</dd></div>
+              ))}
+            </dl>
+          </div>
+        ))}
+      </div>
+    </div>
+    {specs.note && <p class="note">{t(specs.note, locale)}</p>}
+  </div>
+</section>

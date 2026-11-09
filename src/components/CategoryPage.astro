@@ -1,0 +1,46 @@
+---
+import Base from '../layouts/Base.astro';
+import Blocks from './Blocks.astro';
+import { brand, type Locale } from '../lib/brand';
+import type { Category } from '../lib/content';
+import { t, ui, url } from '../lib/i18n';
+import { publicUrl, type Site } from '../lib/routes';
+import { blocksSummary, breadcrumbLd } from '../lib/seo';
+import Paras from './blocks/Paras.astro';
+import Img from './Img.astro';
+
+interface Props { locale: Locale; category: Category; site: Site; alternates: Partial<Record<Locale, string>> }
+const { locale, category, site, alternates } = Astro.props;
+const title = t(category.seo?.title, locale) || `${t(category.name, locale)} | ${brand.identity.name}`;
+const description = t(category.seo?.description, locale) || t(category.intro, locale) || blocksSummary(category.blocks, locale) || undefined;
+const crumbs = breadcrumbLd([
+  { name: ui(locale, 'crumbHome'), url: url(locale) },
+  { name: t(category.name, locale), url: publicUrl('categories', category, locale) },
+], brand.identity.siteUrl.replace(/\/$/, ''));
+const inCategory = site.products.filter((p) => p.category === category.id);
+// Un blocco d'apertura in cima prende il posto del titolo; gli altri blocchi vengono dopo i prodotti.
+const hero = category.blocks[0]?.kind === 'hero' ? category.blocks[0] : undefined;
+const rest = hero ? category.blocks.slice(1) : category.blocks;
+---
+<Base locale={locale} title={title} description={description} alternates={alternates} image={category.seo?.image || category.cover} jsonLd={[crumbs]}>
+  {hero ? <Blocks blocks={[hero]} locale={locale} site={site} h1First /> : (
+    <section class="wrap home-hero">
+      <h1>{t(category.name, locale)}</h1>
+      <Paras text={t(category.intro, locale)} />
+    </section>
+  )}
+  {inCategory.length > 0 && (
+    <section class="wrap product-list cat-products" aria-label={ui(locale, 'products')}>
+      {inCategory.map((p) => (
+        <a class="product-card" href={publicUrl('products', p, locale)}>
+          <div class="pic">
+            {p.cover ? <Img src={p.cover} alt="" sizes="(min-width: 1000px) 33vw, (min-width: 600px) 50vw, 100vw" /> : <span>{t(p.name, locale)}</span>}
+          </div>
+          <h2>{t(p.name, locale)}</h2>
+          <p>{t(p.intro, locale)}</p>
+        </a>
+      ))}
+    </section>
+  )}
+  <Blocks blocks={rest} locale={locale} site={site} />
+</Base>

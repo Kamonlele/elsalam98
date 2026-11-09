@@ -1,0 +1,20 @@
+---
+import type { Locale } from '../../lib/brand';
+import type { Block } from '../../lib/content';
+import { t } from '../../lib/i18n';
+import Paras from './Paras.astro';
+import Img from '../Img.astro';
+
+interface Props { block: Extract<Block, { kind: 'textPhoto' }>; locale: Locale; heading: 'h1' | 'h2' }
+const { block, locale, heading: H } = Astro.props;
+const title = t(block.title, locale);
+---
+<section class:list={['blk', 'wrap', 'b-textphoto', `side-${block.side}`]} data-reveal>
+  {/* Foto intera, nelle sue proporzioni: niente ritagli */}
+  <div class="tp-photo"><Img src={block.photo} alt="" sizes="(min-width: 861px) 55vw, 100vw" /></div>
+  <div class="tp-copy">
+    {title && <H>{title}</H>}
+    <Paras text={t(block.text, locale)} />
+    {block.cta && <a class="btn" href={block.cta.href}>{t(block.cta.label, locale)}</a>}
+  </div>
+</section>

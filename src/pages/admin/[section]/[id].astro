@@ -1,0 +1,88 @@
+---
+import Admin from '../../../layouts/Admin.astro';
+import { DEFAULT_LOCALE, LOCALES } from '../../../lib/brand';
+import { t } from '../../../lib/i18n';
+import type { Kind } from '../../../lib/routes';
+import { bySection, newLabel, SCHEMAS, type Field } from '../../../lib/schema';
+import { getOne, listAll, type Name } from '../../../lib/store';
+import { localNow } from '../../../lib/booking';
+import { textOnlyCollections } from '../../../lib/roles';
+
+const schema = bySection(Astro.params.section ?? '');
+const id = Astro.params.id ?? '';
+if (!schema || !/^(nuovo|[a-z0-9-]{3,80})$/.test(id)) return new Response(null, { status: 404 });
+const isNew = id === 'nuovo';
+// Lo decide il server al salvataggio; qui serve solo a non far scrivere ciò che verrebbe ignorato.
+const textOnly = Astro.locals.user?.role === 'redattore' && textOnlyCollections.includes(schema.name);
+if (textOnly && isNew) return Astro.redirect(`/admin/${schema.section}`);
+const row = isNew ? null : await getOne(schema.name, id);
+if (!isNew && !row) return Astro.redirect(`/admin/${schema.section}`);
+
+// Le collezioni a cui puntano i campi `ref` di questo schema, anche dentro liste e blocchi.
+function refNames(fields: Field[], out = new Set<Name>()) {
+  for (const f of fields) {
+    if (f.type === 'ref') out.add(f.collection);
+    else if (f.type === 'group' || f.type === 'list') refNames(f.fields, out);
+    else if (f.type === 'blocks') for (const k of f.kinds) refNames(k.fields, out);
+  }
+  return out;
+}
+const refs: Record<string, { id: string; label: string }[]> = {};
+for (const name of refNames(schema.sections.flatMap((s) => s.fields))) {
+  const key = SCHEMAS[name].titleKey;
+  refs[name] = (await listAll(name)).map((r) => ({ id: r.id, label: t((r.data as unknown as Record<string, never>)[key], DEFAULT_LOCALE) || 'Senza nome' }));
+}
+
+const data = row?.data ?? structuredClone(schema.blank);
+// Un articolo nuovo esce oggi (data del sito, non del server) e lo firma chi lo scrive.
+if (isNew && schema.name === 'posts') Object.assign(data, { date: localNow().date, author: Astro.locals.user?.name ?? '' });
+
+const NAMES: Record<string, string> = { it: 'Italiano', en: 'Inglese', fr: 'Francese', de: 'Tedesco', es: 'Spagnolo' };
+const boot = {
+  schema,
+  id: isNew ? null : id,
+  // Una pagina nuova parte come bozza; una sede nuova serve subito alla prenotazione.
+  status: row?.status ?? (schema.name === 'locations' ? 'published' : 'draft'),
+  data,
+  locales: LOCALES,
+  defaultLocale: DEFAULT_LOCALE,
+  localeNames: Object.fromEntries(LOCALES.map((l) => [l, NAMES[l] ?? l.toUpperCase()])),
+  refs,
+  kind: (schema.name === 'locations' ? null : schema.name) satisfies Kind | null,
+  textOnly,
+};
+const json = JSON.stringify(boot).replace(/</g, '\\u003c');
+---
+<Admin title={isNew ? newLabel(schema) : 'Modifica'} current={schema.section}>
+  <div id="editor" data-section={schema.section}>
+    <div class="bar">
+      <div class="bar-in">
+        <a class="crumb" href={`/admin/${schema.section}`}>← {schema.plural}</a>
+        <span class="title" id="ed-title"></span>
+        <span class="state" id="ed-state" aria-live="polite"></span>
+      </div>
+      <div class="bar-in" style="margin-top:10px">
+        {LOCALES.length > 1 && <div class="seg" id="ed-langs" role="group" aria-label="Lingua dei testi"></div>}
+        <div class="seg" id="ed-status" role="group" aria-label="Stato" hidden={textOnly}>
+          <button type="button" data-status="published">Pubblicato</button>
+          <button type="button" data-status="draft">Bozza</button>
+        </div>
+        <span style="flex:1"></span>
+        <a class="btn ghost small" id="ed-view" target="_blank" rel="noopener" hidden>Vedi sul sito</a>
+        <button class="btn danger small" type="button" id="ed-delete" hidden>Elimina</button>
+        <button class="btn" type="button" id="ed-save">Salva</button>
+      </div>
+    </div>
+    <div class="page" style="margin-top:24px">
+      {textOnly && <p class="role-note" role="note">Puoi cambiare i testi. Per foto e struttura chiedi a un amministratore.</p>}
+      <p class="lang-note" id="ed-langnote" hidden></p>
+      <div id="ed-form" class="stack"></div>
+    </div>
+  </div>
+  <script type="application/json" id="ed-boot" is:inline set:html={json}></script>
+</Admin>
+
+<script>
+  import { initEditor } from '../../../scripts/admin/editor';
+  initEditor();
+</script>

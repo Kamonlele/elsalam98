@@ -1,0 +1,9 @@
+---
+import { features } from '../../lib/brand';
+
+const role = Astro.locals.user?.role;
+if (role === 'admin') return Astro.redirect(features.booking ? '/admin/prenotazioni' : '/admin/prodotti');
+// Autore e redattore partono dagli articoli; senza blog, da ciò che possono aprire.
+if (features.blog) return Astro.redirect('/admin/articoli');
+return Astro.redirect(role === 'redattore' ? '/admin/pagine' : '/admin/accessi');
+---

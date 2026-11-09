@@ -1,0 +1,43 @@
+---
+import Base from '../layouts/Base.astro';
+import PostCard from './PostCard.astro';
+import { blog, brand, DEFAULT_LOCALE, type Locale } from '../lib/brand';
+import type { Post } from '../lib/content';
+import { t, ui, url } from '../lib/i18n';
+import { blogSegment, POSTS_PER_PAGE, postsPageUrl } from '../lib/routes';
+import { breadcrumbLd } from '../lib/seo';
+
+/** Elenco degli articoli visibili, 12 per pagina. */
+interface Props { locale: Locale; posts: Post[]; page: number; alternates: Partial<Record<Locale, string>> }
+const { locale, posts, page, alternates } = Astro.props;
+const pages = Math.max(1, Math.ceil(posts.length / POSTS_PER_PAGE));
+const shown = posts.slice((page - 1) * POSTS_PER_PAGE, page * POSTS_PER_PAGE);
+const heading = t(blog.title, locale);
+const title = page > 1 ? `${heading}, ${ui(locale, 'pageOf').toLowerCase()} ${page} | ${brand.identity.name}` : `${heading} | ${brand.identity.name}`;
+const prev = page > 1 ? postsPageUrl(locale, page - 1) : undefined;
+const next = page < pages ? postsPageUrl(locale, page + 1) : undefined;
+// Il feed è uno solo, nella lingua principale.
+const origin = brand.identity.siteUrl.replace(/\/$/, '');
+const crumbs = breadcrumbLd([
+  { name: ui(locale, 'crumbHome'), url: url(locale) },
+  { name: heading, url: postsPageUrl(locale, 1) },
+], origin);
+const feed = `/${blogSegment(DEFAULT_LOCALE)}/rss.xml`;
+---
+<Base locale={locale} title={title} alternates={alternates} image={shown[0]?.cover} feed={feed} jsonLd={[crumbs]} prevHref={prev} nextHref={next}>
+  <section class="wrap page-view">
+    <h1>{heading}</h1>
+  </section>
+  <section class="wrap">
+    {shown.length > 0
+      ? <div class="product-list post-list">{shown.map((p) => <PostCard post={p} locale={locale} />)}</div>
+      : <p class="post-empty">{ui(locale, 'noPosts')}</p>}
+    {pages > 1 && (
+      <nav class="pager" aria-label={ui(locale, 'pageOf')}>
+        {prev ? <a class="btn ghost small" href={prev} rel="prev">&larr; {ui(locale, 'prev')}</a> : <span></span>}
+        <span class="pager-n">{ui(locale, 'pageOf')} {page} / {pages}</span>
+        {next ? <a class="btn ghost small" href={next} rel="next">{ui(locale, 'next')} &rarr;</a> : <span></span>}
+      </nav>
+    )}
+  </section>
+</Base>

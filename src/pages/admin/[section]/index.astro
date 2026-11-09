@@ -1,0 +1,140 @@
+---
+import Admin from '../../../layouts/Admin.astro';
+import { DEFAULT_LOCALE, LOCALES } from '../../../lib/brand';
+import type { Product, Project } from '../../../lib/content';
+import { t } from '../../../lib/i18n';
+import { publicUrl } from '../../../lib/routes';
+import { bySection, newLabel } from '../../../lib/schema';
+import { isEmpty, listAll } from '../../../lib/store';
+import { localNow } from '../../../lib/booking';
+import { canOpen } from '../../../lib/roles';
+
+const schema = bySection(Astro.params.section ?? '');
+if (!schema) return new Response(null, { status: 404 });
+// Gli articoli vanno per data, non per ordine a mano.
+const byDate = schema.name === 'posts';
+const rows = await listAll(schema.name);
+if (byDate) rows.sort((a, b) => String((b.data as { date?: string }).date ?? '').localeCompare(String((a.data as { date?: string }).date ?? '')));
+const today = byDate ? localNow().date : '';
+const dayFmt = new Intl.DateTimeFormat('it-IT', { day: 'numeric', month: 'long', year: 'numeric', timeZone: 'UTC' });
+const postDate = (d: Record<string, unknown>) => {
+  const date = typeof d.date === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(d.date) ? d.date : '';
+  if (!date) return '';
+  const label = dayFmt.format(new Date(date + 'T00:00:00Z'));
+  return date > today ? `esce il ${label}` : `del ${label}`;
+};
+const role = Astro.locals.user?.role ?? 'autore';
+const isAdmin = role === 'admin';
+// Bottoni mostrati solo a chi il server lascerebbe passare.
+const canCreate = canOpen(role, `/admin/${schema.section}/nuovo`, 'GET');
+const empty = isAdmin && await isEmpty();
+const fmt = new Intl.DateTimeFormat('it-IT', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' });
+
+function thumb(data: Record<string, unknown>): string | undefined {
+  const p = data as Partial<Product> & Partial<Project>;
+  return p.cover || p.stages?.find((s) => s.photo)?.photo || p.gallery?.[0]?.src || p.photos?.[0]?.src;
+}
+function title(data: Record<string, unknown>) {
+  return t(data[schema!.titleKey] as never, DEFAULT_LOCALE) || `${schema!.singular[0].toUpperCase()}${schema!.singular.slice(1)} senza nome`;
+}
+function missingLangs(data: Record<string, unknown>) {
+  const v = data[schema!.titleKey] as Record<string, string> | undefined;
+  return LOCALES.filter((l) => l !== DEFAULT_LOCALE && !v?.[l]?.trim());
+}
+---
+<Admin title={schema.plural} current={schema.section}>
+  <div class="page">
+    <div class="page-head">
+      <div>
+        <h1>{schema.plural}</h1>
+        {rows.length > 1 && !byDate && isAdmin && <p>L'ordine qui è l'ordine sul sito. Usa le frecce per spostare.</p>}
+        {rows.length > 1 && byDate && <p>Dal più recente. Sul sito escono in ordine di data.</p>}
+      </div>
+      {canCreate && <a class="btn" href={`/admin/${schema.section}/nuovo`}>{newLabel(schema)}</a>}
+    </div>
+
+    {empty && (
+      <div class="empty">
+        <h2>Il sito sta mostrando i contenuti d'esempio</h2>
+        <p>Finché non salvi nulla, le pagine pubbliche usano prodotti e sedi d'esempio. Puoi copiarli qui e modificarli, oppure partire da zero: appena salvi il primo contenuto, gli esempi spariscono dal sito.</p>
+        <div class="actions">
+          <button class="btn" type="button" id="seed">Copia gli esempi qui</button>
+          <a class="btn ghost" href={`/admin/${schema.section}/nuovo`}>Parti da zero</a>
+        </div>
+      </div>
+    )}
+
+    {!empty && rows.length === 0 && (
+      <div class="empty">
+        <h2>{schema.feminine ? 'Nessuna' : 'Nessun'} {schema.singular} ancora</h2>
+        {canCreate && <p>Crea il primo: lo vedrai sul sito appena lo pubblichi.</p>}
+        {canCreate && <a class="btn" href={`/admin/${schema.section}/nuovo`}>{newLabel(schema)}</a>}
+      </div>
+    )}
+
+    {rows.length > 0 && (
+      <ul class="rows" id="rows" data-collection={schema.name} role="list" style="list-style:none;margin:0;padding:0">
+        {rows.map((r, i) => {
+          const d = r.data as unknown as Record<string, unknown>;
+          const img = thumb(d);
+          const miss = missingLangs(d);
+          const live = schema.name !== 'locations' && r.status === 'published'
+            ? publicUrl(schema.name, d as { slug: Record<string, string>; home?: boolean }, DEFAULT_LOCALE) : null;
+          return (
+            <li class="row" data-id={r.id}>
+              <div class="thumb">{img ? <img src={img} alt="" loading="lazy" /> : 'Nessuna foto'}</div>
+              <div>
+                <a class="title" href={`/admin/${schema.section}/${r.id}`}>{title(d)}</a>
+                <div class="meta">
+                  {byDate && postDate(d) && <>Articolo {postDate(d)} · </>}
+                  Modificato {fmt.format(r.updatedAt)}
+                  {miss.length > 0 && <> · manca {miss.map((l) => l.toUpperCase()).join(', ')}</>}
+                  {live && <> · <a href={live} target="_blank" rel="noopener">vedi</a></>}
+                </div>
+              </div>
+              <span class:list={['badge', r.status]}>{r.status === 'published' ? 'Pubblicato' : 'Bozza'}</span>
+              {byDate || !isAdmin ? <div class="move"></div> : (
+                <div class="move">
+                  <button class="icon-btn" type="button" data-move="-1" aria-label="Sposta su" disabled={i === 0}>↑</button>
+                  <button class="icon-btn" type="button" data-move="1" aria-label="Sposta giù" disabled={i === rows.length - 1}>↓</button>
+                </div>
+              )}
+            </li>
+          );
+        })}
+      </ul>
+    )}
+  </div>
+</Admin>
+
+<script>
+  import { api, toast } from '../../../scripts/admin/ui';
+
+  document.getElementById('seed')?.addEventListener('click', async (e) => {
+    const btn = e.currentTarget as HTMLButtonElement;
+    btn.disabled = true;
+    try { await api('/api/admin/seed', { method: 'POST' }); location.reload(); }
+    catch (err) { toast((err as Error).message, 'error'); btn.disabled = false; }
+  });
+
+  const list = document.getElementById('rows');
+  list?.addEventListener('click', async (e) => {
+    const btn = (e.target as HTMLElement).closest<HTMLButtonElement>('[data-move]');
+    if (!btn) return;
+    const row = btn.closest('li')!;
+    const dir = Number(btn.dataset.move);
+    const sibling = dir < 0 ? row.previousElementSibling : row.nextElementSibling;
+    if (!sibling) return;
+    if (dir < 0) sibling.before(row); else sibling.after(row);
+    const items = Array.from(list.querySelectorAll<HTMLElement>('li'));
+    items.forEach((li, i) => {
+      li.querySelector<HTMLButtonElement>('[data-move="-1"]')!.disabled = i === 0;
+      li.querySelector<HTMLButtonElement>('[data-move="1"]')!.disabled = i === items.length - 1;
+    });
+    btn.focus();
+    try {
+      await api('/api/admin/order', { method: 'POST', json: { collection: list.dataset.collection, ids: items.map((li) => li.dataset.id) } });
+      toast('Ordine salvato');
+    } catch (err) { toast((err as Error).message, 'error'); }
+  });
+</script>

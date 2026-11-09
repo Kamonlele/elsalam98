@@ -1,0 +1,26 @@
+---
+import type { Locale } from '../../lib/brand';
+import type { Block } from '../../lib/content';
+import { t } from '../../lib/i18n';
+import { publicUrl, type Site } from '../../lib/routes';
+import Img from '../Img.astro';
+
+interface Props { block: Extract<Block, { kind: 'categories' }>; locale: Locale; site: Site; heading: 'h1' | 'h2' }
+const { block, locale, site, heading: H } = Astro.props;
+const title = t(block.title, locale);
+const Sub = H === 'h1' ? 'h2' : 'h3';
+---
+{site.categories.length > 0 && (
+  <section class="blk wrap b-cards" data-reveal>
+    {title && <H>{title}</H>}
+    <div class="product-list">
+      {site.categories.map((c) => (
+        <a class="product-card" href={publicUrl('categories', c, locale)}>
+          <div class="pic">{c.cover ? <Img src={c.cover} alt="" sizes="(min-width: 1000px) 33vw, (min-width: 600px) 50vw, 100vw" /> : <span>{t(c.name, locale)}</span>}</div>
+          <Sub>{t(c.name, locale)}</Sub>
+          {t(c.intro, locale) && <p>{t(c.intro, locale)}</p>}
+        </a>
+      ))}
+    </div>
+  </section>
+)}

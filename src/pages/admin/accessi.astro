@@ -1,0 +1,101 @@
+---
+import Admin from '../../layouts/Admin.astro';
+import { listAdmins } from '../../lib/auth';
+import { ROLE_HINTS, ROLE_LABELS, ROLES } from '../../lib/roles';
+
+const me = Astro.locals.user!;
+// Chi non è amministratore vede solo la propria password: nemmeno l'elenco delle persone.
+const isAdmin = me.role === 'admin';
+const users = isAdmin ? await listAdmins() : [];
+const fmt = new Intl.DateTimeFormat('it-IT', { day: 'numeric', month: 'long', year: 'numeric' });
+---
+<Admin title={isAdmin ? 'Accessi' : 'La tua password'} current="accessi">
+  <div class="page">
+    <div class="page-head">
+      <div>
+        <h1>{isAdmin ? 'Accessi' : 'La tua password'}</h1>
+        <p>{isAdmin ? "Le persone che possono entrare in quest'area e modificare il sito." : `Sei entrato come ${ROLE_LABELS[me.role].toLowerCase()}: ${ROLE_HINTS[me.role].toLowerCase()}`}</p>
+      </div>
+    </div>
+
+    {isAdmin && <section class="card">
+      <h2>Chi può entrare</h2>
+      <div class="users" style="margin-top:16px">
+        {users.map((u) => (
+          <div class="user">
+            <div>
+              <b>{u.name}{u.id === me.id && ' (tu)'}</b>
+              <span>{u.email} · {u.lastLoginAt ? `ultimo accesso ${fmt.format(u.lastLoginAt)}` : 'non è ancora entrato'}</span>
+            </div>
+            {u.id === me.id ? <span class="role-tag">{ROLE_LABELS[u.role]}</span> : (
+              <div class="user-acts">
+                <select data-role={u.id} data-was={u.role} aria-label={`Ruolo di ${u.name}`}>
+                  {ROLES.map((r) => <option value={r} selected={r === u.role}>{ROLE_LABELS[r]}</option>)}
+                </select>
+                <button class="btn danger small" type="button" data-remove={u.id} data-name={u.name}>Togli l'accesso</button>
+              </div>
+            )}
+          </div>
+        ))}
+      </div>
+      <ul class="role-help">
+        {ROLES.map((r) => <li><b>{ROLE_LABELS[r]}</b>: {ROLE_HINTS[r].toLowerCase()}</li>)}
+      </ul>
+    </section>}
+
+    {isAdmin && <section class="card">
+      <h2>Aggiungi una persona</h2>
+      <p class="intro">Comunicale tu la password: al primo accesso potrà cambiarla da qui.</p>
+      <form id="add" class="fields" style="margin-top:20px" novalidate>
+        <div class="two">
+          <div class="field"><label for="n-name">Nome</label><input id="n-name" name="name" type="text" /></div>
+          <div class="field"><label for="n-email">Email</label><input id="n-email" name="email" type="email" autocomplete="off" /></div>
+        </div>
+        <div class="field">
+          <label for="n-password">Password</label>
+          <input id="n-password" name="password" type="password" autocomplete="new-password" />
+          <span class="help">Almeno 10 caratteri, con lettere e numeri.</span>
+        </div>
+        <div class="field">
+          <label for="n-role">Ruolo</label>
+          <select id="n-role" name="role">
+            {ROLES.map((r) => <option value={r} selected={r === 'autore'}>{ROLE_LABELS[r]}: {ROLE_HINTS[r].toLowerCase()}</option>)}
+          </select>
+        </div>
+        <p class="msg" role="alert"></p>
+        <div><button class="btn" type="submit">Aggiungi</button></div>
+      </form>
+    </section>}
+
+    <section class="card">
+      <h2>La tua password</h2>
+      <form id="pwd" class="fields" style="margin-top:20px" novalidate>
+        <div class="two">
+          <div class="field"><label for="p-current">Password attuale</label><input id="p-current" name="current" type="password" autocomplete="current-password" /></div>
+          <div class="field"><label for="p-next">Nuova password</label><input id="p-next" name="next" type="password" autocomplete="new-password" /></div>
+        </div>
+        <span class="help">Dopo il cambio dovrai rientrare, anche sugli altri dispositivi.</span>
+        <p class="msg" role="alert"></p>
+        <div><button class="btn" type="submit">Cambia password</button></div>
+      </form>
+    </section>
+  </div>
+</Admin>
+
+<script>
+  import { api, bindForm, toast } from '../../scripts/admin/ui';
+  const add = document.getElementById('add') as HTMLFormElement | null;
+  if (add) bindForm(add, '/api/admin/users', 'POST', () => location.reload());
+  document.querySelectorAll<HTMLSelectElement>('[data-role]').forEach((sel) => sel.addEventListener('change', async () => {
+    sel.disabled = true;
+    try { await api('/api/admin/users', { method: 'PUT', json: { id: sel.dataset.role, role: sel.value } }); sel.dataset.was = sel.value; toast('Ruolo cambiato'); }
+    catch (err) { sel.value = sel.dataset.was ?? sel.value; toast((err as Error).message, 'error'); }
+    finally { sel.disabled = false; }
+  }));
+  bindForm(document.getElementById('pwd') as HTMLFormElement, '/api/admin/users', 'PATCH', () => { location.href = '/admin/accedi'; });
+  document.querySelectorAll<HTMLButtonElement>('[data-remove]').forEach((b) => b.addEventListener('click', async () => {
+    if (!confirm(`Togliere l'accesso a ${b.dataset.name}?`)) return;
+    try { await api('/api/admin/users', { method: 'DELETE', json: { id: b.dataset.remove } }); location.reload(); }
+    catch (err) { toast((err as Error).message, 'error'); }
+  }));
+</script>

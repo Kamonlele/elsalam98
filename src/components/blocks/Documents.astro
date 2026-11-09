@@ -1,0 +1,40 @@
+---
+import type { Locale } from '../../lib/brand';
+import type { Block } from '../../lib/content';
+import { t, ui } from '../../lib/i18n';
+import Paras from './Paras.astro';
+
+/** Documenti da scaricare: titolo, fonte, e le stesse carte in altre lingue. */
+interface Props { block: Extract<Block, { kind: 'documents' }>; locale: Locale; heading: 'h1' | 'h2' }
+const { block, locale, heading: H } = Astro.props;
+const title = t(block.title, locale);
+const Sub = H === 'h1' ? 'h2' : 'h3';
+const kind = (href: string) => (/\.pdf($|\?)/i.test(href) ? 'PDF' : /\.(png|jpe?g|webp)($|\?)/i.test(href) ? 'IMG' : '');
+---
+{block.items.length > 0 && (
+  <section class="blk wrap b-docs" data-reveal>
+    {(title || block.text) && (
+      <div class="docs-head">
+        {title && <H>{title}</H>}
+        {block.text && <Paras text={t(block.text, locale)} />}
+      </div>
+    )}
+    <ul>
+      {block.items.map((d) => (
+        <li>
+          <a class="doc-main" href={d.href} target="_blank" rel="noopener">
+            <Sub>{t(d.title, locale)}</Sub>
+            {d.meta && <span class="doc-meta">{t(d.meta, locale)}</span>}
+            <span class="doc-open">{ui(locale, 'open')}{kind(d.href) && <span class="tag">{kind(d.href)}</span>}</span>
+          </a>
+          {d.versions && (
+            <p class="doc-versions">
+              <span>{ui(locale, 'alsoIn')}</span>
+              {d.versions.map((v) => <a href={v.href} target="_blank" rel="noopener" hreflang={v.label.toLowerCase()}>{v.label}</a>)}
+            </p>
+          )}
+        </li>
+      ))}
+    </ul>
+  </section>
+)}

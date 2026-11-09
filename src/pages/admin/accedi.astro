@@ -1,0 +1,29 @@
+---
+import Admin from '../../layouts/Admin.astro';
+import { countAdmins } from '../../lib/auth';
+import { brand } from '../../lib/brand';
+
+if (Astro.locals.user) return Astro.redirect('/admin');
+if ((await countAdmins()) === 0) return Astro.redirect('/admin/primo-accesso');
+const next = Astro.url.searchParams.get('da') ?? '/admin';
+const safeNext = next.startsWith('/admin') ? next : '/admin';
+---
+<Admin title="Accedi" bare>
+  <form class="card" id="login" data-next={safeNext} novalidate>
+    <div>
+      <h1>{brand.identity.name}</h1>
+      <p>Area riservata</p>
+    </div>
+    <div class="fields">
+      <div class="field"><label for="email">Email</label><input id="email" name="email" type="email" autocomplete="username" required /></div>
+      <div class="field"><label for="password">Password</label><input id="password" name="password" type="password" autocomplete="current-password" required /></div>
+    </div>
+    <p class="msg" role="alert"></p>
+    <button class="btn" type="submit">Entra</button>
+  </form>
+</Admin>
+<script>
+  import { bindForm } from '../../scripts/admin/ui';
+  const form = document.getElementById('login') as HTMLFormElement;
+  bindForm(form, '/api/admin/session', 'POST', () => { location.href = form.dataset.next ?? '/admin'; });
+</script>

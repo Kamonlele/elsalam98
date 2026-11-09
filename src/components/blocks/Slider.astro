@@ -1,0 +1,30 @@
+---
+import type { Locale } from '../../lib/brand';
+import type { Block } from '../../lib/content';
+import { t, ui } from '../../lib/i18n';
+import Img from '../Img.astro';
+
+/** Foto intere alte uguali, in fila: si scorrono col dito, trascinando o con le frecce. */
+interface Props { block: Extract<Block, { kind: 'slider' }>; locale: Locale; heading: 'h1' | 'h2' }
+const { block, locale, heading: H } = Astro.props;
+const title = t(block.title, locale);
+---
+{block.photos.length > 0 && (
+  <section class="blk b-slider" data-reveal data-slider>
+    <div class="wrap sl-head">
+      {title ? <H>{title}</H> : <span></span>}
+      <div class="sl-nav" hidden>
+        <button class="btn ghost round" type="button" data-prev aria-label={ui(locale, 'prev')}>&larr;</button>
+        <button class="btn ghost round" type="button" data-next aria-label={ui(locale, 'next')}>&rarr;</button>
+      </div>
+    </div>
+    <div class="sl-track" role="region" tabindex="0" aria-label={title || ui(locale, 'photos')}>
+      {block.photos.map((ph) => (
+        <figure>
+          <Img src={ph.src} alt={t(ph.caption, locale)} width={ph.width || undefined} height={ph.height || undefined} sizes="88vw" draggable="false" />
+          {t(ph.caption, locale) && <figcaption>{t(ph.caption, locale)}</figcaption>}
+        </figure>
+      ))}
+    </div>
+  </section>
+)}

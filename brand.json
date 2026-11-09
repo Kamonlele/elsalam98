@@ -1,0 +1,123 @@
+{
+  "$comment": "Unico file da compilare per vestire un progetto nuovo. I contenuti (prodotti, foto, testi) stanno nel database e si cambiano dall'area riservata.",
+  "identity": {
+    "name": "Al Salam Boccaccio 98",
+    "logo": "/brand/asb-logo.png",
+    "tagline": {
+      "en": "A tragedy we must not forget.",
+      "it": "Una tragedia da non dimenticare.",
+      "fr": "Une tragédie à ne pas oublier.",
+      "ar": "مأساة يجب ألا ننساها."
+    },
+    "siteUrl": "https://www.elsalam98.net"
+  },
+  "locales": {
+    "default": "en",
+    "active": [
+      "en",
+      "it",
+      "fr",
+      "ar"
+    ]
+  },
+  "contact": {
+    "email": "",
+    "phone": ""
+  },
+  "palette": {
+    "light": {
+      "bg": "#f2f3f1",
+      "surface": "#ffffff",
+      "surface2": "#e5e8e6",
+      "fg": "#11161b",
+      "muted": "#4c5660",
+      "line": "#cdd2d3",
+      "accent": "#8a6418",
+      "accentFg": "#ffffff"
+    },
+    "dark": {
+      "bg": "#0b1015",
+      "surface": "#11181f",
+      "surface2": "#172029",
+      "fg": "#e9edef",
+      "muted": "#9ba6af",
+      "line": "#25313b",
+      "accent": "#d6a646",
+      "accentFg": "#17120a"
+    }
+  },
+  "fonts": {
+    "$comment": "I font sono pacchetti @fontsource ospitati sul sito (niente Google Fonts, per la privacy). Per cambiarli: installa il pacchetto e aggiorna src/styles/fonts.css.",
+    "display": "'Newsreader', 'Times New Roman', serif",
+    "body": "'Schibsted Grotesk', ui-sans-serif, system-ui, -apple-system, 'Segoe UI', sans-serif"
+  },
+  "features": {
+    "booking": false,
+    "leads": false,
+    "gallery": true,
+    "specs": false,
+    "blog": false
+  },
+  "blog": {
+    "$comment": "Articoli. Il segmento è il pezzo di indirizzo dell'elenco (/news/) e degli articoli (/news/titolo/); il feed RSS è /news/rss.xml.",
+    "segment": {
+      "en": "news",
+      "it": "notizie",
+      "fr": "actualites",
+      "ar": "news"
+    },
+    "title": {
+      "en": "News",
+      "it": "Notizie",
+      "fr": "Actualités",
+      "ar": "الأخبار"
+    }
+  },
+  "booking": {
+    "$comment": "Prenotazione visita. Le sedi e gli orari si gestiscono dall'area riservata; qui le regole valide per tutto il sito.",
+    "timezone": "Europe/Rome",
+    "daysAhead": 21,
+    "minNoticeHours": 12,
+    "visitMinutes": 60,
+    "autoConfirm": false,
+    "askCity": true,
+    "questions": [
+      {
+        "id": "tempi",
+        "required": true,
+        "label": {
+          "it": "Quando pensi di realizzarla?",
+          "en": "When are you planning to buy?",
+          "fr": "Quand pensez-vous la réaliser ?"
+        },
+        "options": [
+          {
+            "value": "entro-3-mesi",
+            "label": {
+              "it": "Entro 3 mesi",
+              "en": "Within 3 months",
+              "fr": "D'ici 3 mois"
+            }
+          },
+          {
+            "value": "entro-un-anno",
+            "label": {
+              "it": "Entro un anno",
+              "en": "Within a year",
+              "fr": "D'ici un an"
+            }
+          },
+          {
+            "value": "sto-guardando",
+            "label": {
+              "it": "Sto solo guardando",
+              "en": "Just looking",
+              "fr": "Je regarde seulement"
+            }
+          }
+        ]
+      }
+    ],
+    "turnstileSiteKey": ""
+  }
+}

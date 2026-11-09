@@ -1,0 +1,54 @@
+---
+import Base from '../layouts/Base.astro';
+import Scene from './Scene.astro';
+import Gallery from './Gallery.astro';
+import Specs from './Specs.astro';
+import Booking from './Booking.astro';
+import { brand, features, type Locale } from '../lib/brand';
+import type { Product } from '../lib/content';
+import { t, ui, url } from '../lib/i18n';
+import { publicUrl } from '../lib/routes';
+import { list } from '../lib/store';
+import { breadcrumbLd, productLd } from '../lib/seo';
+
+interface Props { locale: Locale; product: Product; alternates: Partial<Record<Locale, string>> }
+const { locale, product, alternates } = Astro.props;
+
+const showSpecs = features.specs && !!product.specs?.groups.length;
+const showGallery = features.gallery && product.gallery.length > 0;
+const bookable = features.booking && product.bookable;
+const locations = bookable ? await list('locations') : [];
+const category = product.category ? (await list('categories')).find((c) => c.id === product.category) : undefined;
+const origin = brand.identity.siteUrl.replace(/\/$/, '');
+const crumbs = breadcrumbLd([
+  { name: ui(locale, 'crumbHome'), url: url(locale) },
+  ...(category ? [{ name: t(category.name, locale), url: publicUrl('categories', category, locale) }] : []),
+  { name: t(product.name, locale), url: publicUrl('products', product, locale) },
+], origin);
+---
+<Base
+  locale={locale}
+  title={t(product.seo?.title, locale) || `${t(product.name, locale)} | ${brand.identity.name}`}
+  description={t(product.seo?.description, locale) || t(product.stages[0]?.text, locale)}
+  alternates={alternates}
+  type="product"
+  image={product.seo?.image || product.cover}
+  jsonLd={[productLd(product, locale, origin), crumbs]}
+  bookable={bookable && locations.length > 0}
+>
+  <Fragment slot="nav">
+    <a href="#scena">{ui(locale, 'product')}</a>
+    {showGallery && <a href="#realizzazioni">{ui(locale, 'gallery')}</a>}
+    {showSpecs && <a href="#scheda">{ui(locale, 'specs')}</a>}
+  </Fragment>
+  <Scene locale={locale} product={product} specs={showSpecs} bookable={bookable && locations.length > 0} />
+  {/* Dopo la scena, non prima: la scena occupa lo schermo dall'alto e il suo scroll dipende da dove inizia */}
+  {category && (
+    <nav class="wrap crumbs" aria-label="Percorso">
+      <a href={publicUrl('categories', category, locale)}>{t(category.name, locale)}</a>
+    </nav>
+  )}
+  {showGallery && <Gallery locale={locale} photos={product.gallery} />}
+  {showSpecs && <Specs locale={locale} specs={product.specs!} />}
+  {bookable && locations.length > 0 && <Booking locale={locale} product={{ id: product.id, name: t(product.name, locale) }} locations={locations} />}
+</Base>

@@ -1,0 +1,14 @@
+---
+import type { Locale } from '../../lib/brand';
+import type { Block } from '../../lib/content';
+import { t } from '../../lib/i18n';
+import Paras from './Paras.astro';
+
+interface Props { block: Extract<Block, { kind: 'text' }>; locale: Locale; heading: 'h1' | 'h2' }
+const { block, locale, heading: H } = Astro.props;
+const title = t(block.title, locale);
+---
+<section class="blk wrap b-text" data-reveal>
+  {title && <H>{title}</H>}
+  <Paras text={t(block.text, locale)} />
+</section>

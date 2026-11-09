@@ -1,0 +1,145 @@
+---
+import '../styles/fonts.css';
+import '../styles/global.css';
+import { brand, dirOf, LOCALE_NAMES, LOCALE_SHORT, LOCALES, type Locale } from '../lib/brand';
+import { t, ui, url } from '../lib/i18n';
+import { themeCss } from '../lib/theme';
+import { menu, publicUrl } from '../lib/routes';
+import { list } from '../lib/store';
+import { absolute, ldJson } from '../lib/seo';
+import { consentHead, gtmNoscript, iubendaOn } from '../lib/consent';
+import { readSettings } from '../lib/settings';
+
+interface Props {
+  locale: Locale;
+  title: string;
+  description?: string;
+  /** URL della stessa pagina nelle altre lingue, per hreflang e selettore lingua. */
+  alternates: Partial<Record<Locale, string>>;
+  bookable?: boolean;
+  /** Immagine per le anteprime social: indirizzo del sito o esterno. */
+  image?: string;
+  /** Dati strutturati schema.org, uno script per oggetto. */
+  jsonLd?: object[];
+  type?: 'website' | 'article' | 'product';
+  /** Data di pubblicazione (YYYY-MM-DD) di un articolo, per Open Graph. */
+  published?: string;
+  /** Indirizzo del feed RSS da annunciare nella pagina. */
+  feed?: string;
+  /** Pagina precedente e successiva di un elenco a più pagine. */
+  prevHref?: string;
+  nextHref?: string;
+}
+const { locale, title, description, alternates, bookable = false, image, jsonLd = [], type = 'website', published, feed, prevHref, nextHref } = Astro.props;
+const site = brand.identity.siteUrl.replace(/\/$/, '');
+
+const canonical = site + (alternates[locale] ?? '/');
+const ogImage = image ? absolute(image, site) : undefined;
+// Con una lingua sola hreflang non serve e può confondere i motori di ricerca.
+const multilingual = LOCALES.length > 1;
+
+const tokens = themeCss();
+const pages = await list('pages');
+const links = menu({ pages, categories: await list('categories'), products: [], projects: [] }, locale);
+const settings = await readSettings();
+const iubenda = iubendaOn(settings);
+// Il collegamento della sola pagina che contiene il blocco, privacy o cookie.
+const legal = (['privacy', 'cookie'] as const).flatMap((kind) => {
+  const p = pages.find((x) => x.blocks.some((b) => b.kind === 'policy' && b.policy === kind));
+  return p ? [{ label: ui(locale, kind === 'cookie' ? 'cookiePolicy' : 'privacy'), href: publicUrl('pages', p, locale) }] : [];
+});
+---
+<!doctype html>
+<html lang={locale} dir={dirOf(locale)}>
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+    <title>{title}</title>
+    {description && <meta name="description" content={description} />}
+    <link rel="canonical" href={canonical} />
+    {multilingual && Object.entries(alternates).map(([l, href]) => <link rel="alternate" hreflang={l} href={site + href} />)}
+    {multilingual && alternates[LOCALES[0]] && <link rel="alternate" hreflang="x-default" href={site + alternates[LOCALES[0]]} />}
+    <meta property="og:title" content={title} />
+    {description && <meta property="og:description" content={description} />}
+    <meta property="og:url" content={canonical} />
+    <meta property="og:type" content={type} />
+    <meta property="og:site_name" content={brand.identity.name} />
+    {ogImage && <meta property="og:image" content={ogImage} />}
+    {type === 'article' && published && <meta property="article:published_time" content={published} />}
+    <meta name="twitter:card" content={ogImage ? 'summary_large_image' : 'summary'} />
+    {feed && <link rel="alternate" type="application/rss+xml" title={title} href={site + feed} />}
+    {prevHref && <link rel="prev" href={site + prevHref} />}
+    {nextHref && <link rel="next" href={site + nextHref} />}
+    <Fragment set:html={consentHead(settings, locale)} />
+    {jsonLd.map((o) => <script type="application/ld+json" set:html={ldJson(o)}></script>)}
+    <style set:html={tokens}></style>
+    <script is:inline>
+      // Da dove arriva la visita: campagna (utm), click da Google o Meta, sito di provenienza.
+      // Si salva al primo arrivo nella sessione; una nuova campagna sostituisce la precedente.
+      try {
+        var q = new URLSearchParams(location.search), keys = ['utm_source','utm_medium','utm_campaign','utm_term','utm_content','gclid','fbclid'], f = {}, any = false;
+        keys.forEach(function (k) { var v = q.get(k); if (v) { f[k] = v; any = true; } });
+        if (any || !sessionStorage.getItem('kit-fonte')) {
+          if (document.referrer && new URL(document.referrer).host !== location.host) f.referrer = document.referrer;
+          f.landing = location.pathname;
+          sessionStorage.setItem('kit-fonte', JSON.stringify(f));
+        }
+      } catch (e) {}
+    </script>
+  </head>
+  <body>
+    <Fragment set:html={gtmNoscript(settings.gtmId)} />
+    <a class="skip" href="#main">{ui(locale, 'skip')}</a>
+    <header class="top">
+      <div class="top-in">
+        <a class="brand" href={url(locale)}>{(brand.identity as { logo?: string }).logo && <img src={(brand.identity as { logo?: string }).logo} alt="" width="32" height="32" />}<span>{brand.identity.name}</span></a>
+        <nav aria-label={ui(locale, 'menu')}>
+          <div class="nav-links">
+            {links.map((l) => <a href={l.href}>{l.label}</a>)}
+            <slot name="nav" />
+            {LOCALES.length > 1 && (
+              <div class="langs" aria-label={ui(locale, 'languages')}>
+                {LOCALES.map((l) => (
+                  <a href={alternates[l] ?? url(l)} hreflang={l} lang={l} aria-current={l === locale ? 'true' : undefined} title={LOCALE_NAMES[l]}>{LOCALE_SHORT[l]}</a>
+                ))}
+              </div>
+            )}
+          </div>
+          {bookable && <a class="btn small" href="#visita">{ui(locale, 'book')}</a>}
+          {/* Telefono: le voci in un menu che si apre, senza script */}
+          {(links.length > 0 || LOCALES.length > 1) && (
+            <details class="nav-menu">
+              <summary class="btn ghost small">{ui(locale, 'menu')}</summary>
+              <div class="nav-panel">
+                {links.map((l) => <a href={l.href}>{l.label}</a>)}
+                {LOCALES.length > 1 && (
+                  <div class="langs" aria-label={ui(locale, 'languages')}>
+                    {LOCALES.map((l) => (
+                      <a href={alternates[l] ?? url(l)} hreflang={l} lang={l} aria-current={l === locale ? 'true' : undefined}>{LOCALE_NAMES[l]}</a>
+                    ))}
+                  </div>
+                )}
+              </div>
+            </details>
+          )}
+        </nav>
+      </div>
+    </header>
+    <main id="main">
+      <slot />
+    </main>
+    <footer>
+      <div class="wrap">
+        <span>{brand.identity.name}</span>
+        {(brand.contact.email || brand.contact.phone) && <span>{[brand.contact.email, brand.contact.phone].filter(Boolean).join(' · ')}</span>}
+        <span>{t(brand.identity.tagline, locale)}</span>
+        {(legal.length > 0 || iubenda) && (
+          <span class="legal">
+            {legal.map((l) => <a href={l.href}>{l.label}</a>)}
+            {iubenda && <a href="#" class="iubenda-cs-preferences-link">{ui(locale, 'cookiePrefs')}</a>}
+          </span>
+        )}
+      </div>
+    </footer>
+  </body>
+</html>

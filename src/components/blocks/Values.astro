@@ -1,0 +1,24 @@
+---
+import type { Locale } from '../../lib/brand';
+import type { Block } from '../../lib/content';
+import { t } from '../../lib/i18n';
+import Paras from './Paras.astro';
+
+interface Props { block: Extract<Block, { kind: 'values' }>; locale: Locale; heading: 'h1' | 'h2' }
+const { block, locale, heading: H } = Astro.props;
+const title = t(block.title, locale);
+const Sub = H === 'h1' ? 'h2' : 'h3';
+---
+{block.items.length > 0 && (
+  <section class="blk wrap b-values" data-reveal>
+    {title && <H>{title}</H>}
+    <ul>
+      {block.items.map((it) => (
+        <li>
+          {t(it.title, locale) && <Sub>{t(it.title, locale)}</Sub>}
+          <Paras text={t(it.text, locale)} />
+        </li>
+      ))}
+    </ul>
+  </section>
+)}

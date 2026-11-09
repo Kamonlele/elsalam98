@@ -1,0 +1,72 @@
+---
+import Admin from '../../layouts/Admin.astro';
+import { listRedirects } from '../../lib/redirects';
+
+const rows = await listRedirects().catch(() => []);
+---
+<Admin title="Redirect" current="redirect">
+  <div class="page">
+    <div class="page-head">
+      <div>
+        <h1>Redirect</h1>
+        <p>Chi cerca un vecchio indirizzo viene mandato al nuovo, e Google lo segue. Quando cambi l'indirizzo di una pagina, categoria, prodotto o realizzazione online, il redirect si crea da solo.</p>
+      </div>
+    </div>
+
+    <section class="card">
+      <h2>Redirect attivi</h2>
+      {rows.length === 0 ? (
+        <p class="intro">Non ce n'è ancora nessuno.</p>
+      ) : (
+        <div class="users" style="margin-top:16px">
+          {rows.map((r) => (
+            <div class="user">
+              <div>
+                <b>{r.from} &rarr; {r.to}</b>
+                <span>{r.auto ? 'Automatico' : 'Aggiunto a mano'} · usato {r.hits} {r.hits === 1 ? 'volta' : 'volte'}</span>
+              </div>
+              <button class="btn danger small" type="button" data-remove={r.from}>Elimina</button>
+            </div>
+          ))}
+        </div>
+      )}
+    </section>
+
+    <section class="card">
+      <h2>Aggiungine uno</h2>
+      <form id="add" class="fields" style="margin-top:20px" novalidate>
+        <div class="two">
+          <div class="field"><label for="r-from">Vecchio indirizzo</label><input id="r-from" name="from" type="text" placeholder="/vecchia-pagina/" autocomplete="off" /></div>
+          <div class="field"><label for="r-to">Nuovo indirizzo</label><input id="r-to" name="to" type="text" placeholder="/chi-siamo/" autocomplete="off" /></div>
+        </div>
+        <span class="help">Va bene anche l'indirizzo completo del vecchio sito: si tiene solo il percorso.</span>
+        <p class="msg" role="alert"></p>
+        <div><button class="btn" type="submit">Aggiungi</button></div>
+      </form>
+    </section>
+
+    <section class="card">
+      <h2>Incolla un elenco</h2>
+      <p class="intro">Per chi arriva da un altro sito. Un redirect per riga: vecchio indirizzo, uno spazio, nuovo indirizzo. Le righe vuote e quelle che iniziano con # si saltano.</p>
+      <form id="bulk" class="fields" style="margin-top:20px" novalidate>
+        <div class="field">
+          <label for="b-text">Elenco</label>
+          <textarea id="b-text" name="bulk" rows="10" spellcheck="false" placeholder={'/vecchia/ /chi-siamo/\nhttps://www.vecchio.it/servizi.html /servizi/'}></textarea>
+        </div>
+        <p class="msg" role="alert"></p>
+        <div><button class="btn" type="submit">Aggiungi tutti</button></div>
+      </form>
+    </section>
+  </div>
+</Admin>
+
+<script>
+  import { api, bindForm, toast } from '../../scripts/admin/ui';
+  bindForm(document.getElementById('add') as HTMLFormElement, '/api/admin/redirect', 'POST', () => location.reload());
+  bindForm(document.getElementById('bulk') as HTMLFormElement, '/api/admin/redirect', 'POST', () => location.reload());
+  document.querySelectorAll<HTMLButtonElement>('[data-remove]').forEach((b) => b.addEventListener('click', async () => {
+    if (!confirm(`Eliminare il redirect da ${b.dataset.remove}?`)) return;
+    try { await api('/api/admin/redirect', { method: 'DELETE', json: { from: b.dataset.remove } }); location.reload(); }
+    catch (err) { toast((err as Error).message, 'error'); }
+  }));
+</script>

@@ -1,0 +1,87 @@
+---
+import type { Locale } from '../lib/brand';
+import { features } from '../lib/brand';
+import type { Block } from '../lib/content';
+import { t, ui } from '../lib/i18n';
+import type { Site } from '../lib/routes';
+import { list } from '../lib/store';
+import { localizeLinks } from '../lib/links';
+import { readSettings } from '../lib/settings';
+import Booking from './Booking.astro';
+import Hero from './blocks/Hero.astro';
+import Text from './blocks/Text.astro';
+import TextPhoto from './blocks/TextPhoto.astro';
+import Gallery from './blocks/Gallery.astro';
+import Slider from './blocks/Slider.astro';
+import Values from './blocks/Values.astro';
+import Products from './blocks/Products.astro';
+import Categories from './blocks/Categories.astro';
+import Projects from './blocks/Projects.astro';
+import Posts from './blocks/Posts.astro';
+import Locations from './blocks/Locations.astro';
+import Cta from './blocks/Cta.astro';
+import Policy from './blocks/Policy.astro';
+import Stats from './blocks/Stats.astro';
+import Timeline from './blocks/Timeline.astro';
+import Documents from './blocks/Documents.astro';
+
+/**
+ * I blocchi di una pagina o di una categoria, nell'ordine scelto dal cliente.
+ * `h1First`: il primo blocco porta il titolo principale della pagina.
+ */
+interface Props { blocks: Block[]; locale: Locale; site: Site; h1First?: boolean }
+const { blocks: raw, locale, site, h1First = false } = Astro.props;
+// I pulsanti verso pagine del sito si scrivono nella lingua principale: qui si portano nella lingua della pagina.
+const blocks = localizeLinks(raw, locale, site);
+
+const needsPlaces = blocks.some((b) => b.kind === 'locations' || b.kind === 'booking');
+const locations = needsPlaces ? await list('locations') : [];
+// La prenotazione ha id fissi: una sola per pagina.
+const policyId = blocks.some((b) => b.kind === 'policy') ? (await readSettings()).iubendaPolicyId.trim() : '';
+const firstBooking = blocks.findIndex((b) => b.kind === 'booking');
+const hasGallery = blocks.some((b) => b.kind === 'gallery' && b.photos.length > 0);
+const heading = (i: number) => (h1First && i === 0 ? 'h1' : 'h2') as 'h1' | 'h2';
+---
+{blocks.map((b, i) => {
+  const h = heading(i);
+  switch (b.kind) {
+    case 'hero': return <Hero block={b} locale={locale} heading={h} />;
+    case 'text': return <Text block={b} locale={locale} heading={h} />;
+    case 'textPhoto': return <TextPhoto block={b} locale={locale} heading={h} />;
+    case 'gallery': return <Gallery block={b} locale={locale} heading={h} />;
+    case 'slider': return <Slider block={b} locale={locale} heading={h} />;
+    case 'values': return <Values block={b} locale={locale} heading={h} />;
+    case 'products': return <Products block={b} locale={locale} site={site} heading={h} />;
+    case 'categories': return <Categories block={b} locale={locale} site={site} heading={h} />;
+    case 'projects': return <Projects block={b} locale={locale} site={site} heading={h} />;
+    case 'posts': return <Posts block={b} locale={locale} site={site} heading={h} />;
+    case 'locations': return <Locations block={b} locale={locale} locations={locations} heading={h} />;
+    case 'booking':
+      return features.booking && i === firstBooking && locations.length > 0
+        ? <div class="b-booking" data-reveal><Booking locale={locale} locations={locations} title={t(b.title, locale)} /></div>
+        : null;
+    case 'cta': return <Cta block={b} locale={locale} heading={h} />;
+    case 'policy': return <Policy block={b} locale={locale} policyId={policyId} heading={h} />;
+    case 'stats': return <Stats block={b} locale={locale} heading={h} />;
+    case 'timeline': return <Timeline block={b} locale={locale} heading={h} />;
+    case 'documents': return <Documents block={b} locale={locale} heading={h} />;
+    default: return null;
+  }
+})}
+{hasGallery && (
+  <dialog class="blk-lb" id="blk-lb" aria-label={ui(locale, 'photos')}>
+    <div class="lb-top"><button class="btn ghost small" type="button" data-close>{ui(locale, 'close')}</button></div>
+    <div class="lb-img"><img alt="" /></div>
+    <div class="lb-bot">
+      <button class="btn ghost round" type="button" data-prev aria-label={ui(locale, 'prev')}>&larr;</button>
+      <span class="lb-cap"></span>
+      <button class="btn ghost round" type="button" data-next aria-label={ui(locale, 'next')}>&rarr;</button>
+    </div>
+  </dialog>
+)}
+{blocks.length > 0 && (
+  <script>
+    import { initBlocks } from '../scripts/blocks';
+    initBlocks();
+  </script>
+)}

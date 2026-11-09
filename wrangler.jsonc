@@ -1,0 +1,15 @@
+{
+  // Un file per progetto: nome del worker, database e spazio foto del cliente.
+  "name": "elsalam98",
+  "main": "./src/worker.ts",
+  "compatibility_date": "2026-09-01",
+  "compatibility_flags": ["nodejs_compat"],
+  "d1_databases": [
+    { "binding": "DB", "database_name": "elsalam98", "database_id": "da-compilare" }
+  ],
+  // Ogni 15 minuti: promemoria del giorno prima e ripetizioni dei webhook.
+  "triggers": { "crons": ["*/15 * * * *"] },
+  "r2_buckets": [
+    { "binding": "MEDIA", "bucket_name": "elsalam98-media" }
+  ]
+}

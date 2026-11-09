@@ -1,0 +1,23 @@
+---
+import type { Locale } from '../../lib/brand';
+import { features } from '../../lib/brand';
+import type { Block } from '../../lib/content';
+import { t } from '../../lib/i18n';
+import type { Site } from '../../lib/routes';
+import PostCard from '../PostCard.astro';
+
+/** Gli ultimi articoli. `site.posts` arriva già filtrato: solo quelli visibili oggi. */
+interface Props { block: Extract<Block, { kind: 'posts' }>; locale: Locale; site: Site; heading: 'h1' | 'h2' }
+const { block, locale, site, heading: H } = Astro.props;
+const title = t(block.title, locale);
+const items = features.blog ? (site.posts ?? []).slice(0, block.limit ?? 3) : [];
+const Sub = H === 'h1' ? 'h2' : 'h3';
+---
+{items.length > 0 && (
+  <section class="blk wrap b-cards" data-reveal>
+    {title && <H>{title}</H>}
+    <div class="product-list post-list">
+      {items.map((p) => <PostCard post={p} locale={locale} heading={Sub} />)}
+    </div>
+  </section>
+)}

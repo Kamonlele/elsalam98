@@ -1,0 +1,795 @@
+<title>Prodotto-scena</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Familjen+Grotesk:wght@500;600;700&family=Schibsted+Grotesk:wght@400;500;600&display=swap">
+<style>
+/* Layout: scena 3D in sticky che racconta il prodotto in 5 tappe, poi scheda tecnica raggruppata e prenotazione della visita.
+   Forme: pulsanti e chip a pillola, schede 14px, campi 10px. */
+:root {
+  --bg: #eef3f7;
+  --surface: #ffffff;
+  --surface-2: #e0e9f0;
+  --fg: #0f1c26;
+  --muted: #4d606f;
+  --line: #c6d3dd;
+  --accent: #0b74b0;
+  --accent-fg: #ffffff;
+  --scrim: rgba(238, 243, 247, 0.92);
+  --error: #b3261e;
+  --font-display: 'Familjen Grotesk', ui-sans-serif, system-ui, sans-serif;
+  --font-body: 'Schibsted Grotesk', ui-sans-serif, system-ui, -apple-system, 'Segoe UI', sans-serif;
+  --r-card: 14px;
+  --r-field: 10px;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #0b1520; --surface: #122030; --surface-2: #19293a; --fg: #e5eef5; --muted: #93a7b6;
+    --line: #263b4d; --accent: #5cc4f2; --accent-fg: #03202f; --scrim: rgba(11, 21, 32, 0.9); --error: #ffb4ab;
+    color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #0b1520; --surface: #122030; --surface-2: #19293a; --fg: #e5eef5; --muted: #93a7b6;
+  --line: #263b4d; --accent: #5cc4f2; --accent-fg: #03202f; --scrim: rgba(11, 21, 32, 0.9); --error: #ffb4ab;
+  color-scheme: dark;
+}
+
+* { box-sizing: border-box; }
+body {
+  background: var(--bg); color: var(--fg);
+  font-family: var(--font-body); font-size: 16px; line-height: 1.55;
+  -webkit-font-smoothing: antialiased;
+}
+h1, h2, h3 { font-family: var(--font-display); font-weight: 600; letter-spacing: -0.02em; line-height: 1.05; margin: 0; text-wrap: balance; }
+p { margin: 0; }
+a { color: inherit; }
+:focus-visible { outline: 2px solid var(--accent); outline-offset: 3px; }
+
+/* Barra in alto */
+.top {
+  position: fixed; inset: 0 0 auto 0; z-index: 20;
+  padding-top: env(safe-area-inset-top, 0px);
+  background: color-mix(in srgb, var(--bg) 78%, transparent);
+  backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px);
+}
+.top-in {
+  height: 64px; max-width: 1360px; margin: 0 auto; padding: 0 max(16px, 4vw);
+  display: flex; align-items: center; justify-content: space-between; gap: 24px;
+}
+.brand { font-family: var(--font-display); font-weight: 700; font-size: 1.15rem; letter-spacing: -0.01em; text-decoration: none; }
+.brand span { color: var(--muted); font-weight: 500; }
+.top nav { display: flex; gap: 28px; align-items: center; }
+.top nav a { text-decoration: none; color: var(--muted); font-size: 0.95rem; }
+.top nav a:hover { color: var(--fg); }
+.top nav .btn { color: var(--accent-fg); }
+
+.btn {
+  display: inline-flex; align-items: center; justify-content: center; white-space: nowrap;
+  height: 48px; padding: 0 24px; border-radius: 999px; border: 1px solid transparent;
+  font: 600 0.98rem/1 var(--font-body); text-decoration: none; cursor: pointer;
+  background: var(--accent); color: var(--accent-fg);
+  transition: transform .2s cubic-bezier(.16,1,.3,1), filter .2s;
+}
+.btn:hover { filter: brightness(1.06); }
+.btn:active { transform: scale(0.98); }
+.btn.ghost { background: transparent; color: var(--fg); border-color: var(--line); }
+.btn.small { height: 40px; padding: 0 18px; font-size: 0.9rem; }
+
+/* Scena */
+#scena { position: relative; height: 520vh; }
+.sticky { position: sticky; top: 0; height: 100dvh; overflow: hidden; }
+#scene-canvas { position: absolute; inset: 0; width: 100%; height: 100%; display: block; }
+.stages { position: absolute; inset: 0; pointer-events: none; }
+.stage {
+  position: absolute; left: max(16px, 6vw); top: 50%; width: min(30rem, 40vw);
+  transform: translateY(-50%); display: grid; gap: 18px;
+  opacity: 0; will-change: opacity, transform;
+}
+.stage[data-i="0"] { opacity: 1; }
+.stage h1 { font-size: clamp(2.4rem, 4.6vw, 4.1rem); }
+.stage h2 { font-size: clamp(2rem, 3.6vw, 3.2rem); }
+.stage p { color: var(--muted); font-size: 1.08rem; max-width: 34ch; }
+.stage .ctas { display: flex; gap: 12px; flex-wrap: wrap; margin-top: 8px; }
+.stage.live { pointer-events: auto; }
+.kicker { font-size: 0.82rem; letter-spacing: 0.12em; text-transform: uppercase; color: var(--accent); font-weight: 600; }
+
+.progress {
+  position: absolute; right: max(16px, 4vw); bottom: 32px; display: flex; gap: 18px;
+  font-size: 0.82rem; color: var(--muted); pointer-events: none;
+}
+.progress span { transition: color .3s; }
+.progress span.on { color: var(--fg); }
+
+/* Realizzazioni: foto intere, scorrono in orizzontale, si aprono a tutto schermo */
+#realizzazioni { padding-block: 112px 24px; }
+.gal-head { display: grid; gap: 12px; margin-bottom: 32px; }
+.gal-head h2 { font-size: clamp(2rem, 3.4vw, 3rem); }
+.gal-head p { color: var(--muted); max-width: 48ch; }
+.gal-track {
+  display: grid; grid-auto-flow: column; grid-auto-columns: min(72vw, 980px); gap: 16px;
+  overflow-x: auto; scroll-snap-type: x mandatory; overscroll-behavior-x: contain;
+  padding-inline: max(16px, 4vw); scroll-padding-inline: max(16px, 4vw); scrollbar-width: none;
+}
+.gal-track::-webkit-scrollbar { display: none; }
+.gal-track figure { margin: 0; scroll-snap-align: start; display: grid; gap: 10px; min-width: 0; }
+.gal-item {
+  display: block; width: 100%; padding: 0; border: 0; cursor: zoom-in; aspect-ratio: 4 / 3;
+  border-radius: var(--r-card); overflow: hidden; background: var(--surface-2);
+}
+.gal-item img { width: 100%; height: 100%; object-fit: contain; display: block; transition: filter .3s; }
+.gal-item:hover img { filter: brightness(1.05); }
+.gal-track figcaption { color: var(--muted); font-size: 0.92rem; }
+.gal-nav { display: flex; gap: 8px; justify-content: flex-end; margin-top: 20px; }
+.round { width: 48px; height: 48px; padding: 0; font-size: 1.2rem; }
+#lb {
+  width: 100vw; height: 100dvh; max-width: none; max-height: none; margin: 0; border: 0; padding: 16px;
+  background: rgba(6, 12, 20, 0.95); color: #e5eef5;
+}
+#lb[open] { display: grid; grid-template-rows: auto 1fr auto; gap: 12px; }
+#lb::backdrop { background: rgba(6, 12, 20, 0.95); }
+#lb .lb-top { display: flex; justify-content: flex-end; }
+#lb .lb-img { min-height: 0; display: grid; place-items: center; }
+#lb img { max-width: 100%; max-height: 100%; object-fit: contain; border-radius: 8px; }
+#lb .lb-bot { display: flex; justify-content: center; align-items: center; gap: 16px; padding-bottom: env(safe-area-inset-bottom, 0px); }
+#lb .lb-cap { min-width: 0; text-align: center; color: #b7c7d3; font-size: 0.95rem; flex: 1; max-width: 40ch; }
+#lb .btn.ghost { color: #e5eef5; border-color: rgba(229, 238, 245, 0.3); }
+
+/* Scheda tecnica */
+.wrap { max-width: 1360px; margin: 0 auto; padding-inline: max(16px, 4vw); }
+#scheda { padding-block: 120px 96px; }
+.spec-grid { display: grid; grid-template-columns: 1.1fr 2fr; gap: 64px; align-items: start; }
+.spec-hero h2 { font-size: clamp(2rem, 3.4vw, 3rem); margin-bottom: 20px; }
+.measure { font-family: var(--font-display); font-weight: 600; font-size: clamp(3.4rem, 7vw, 6.2rem); line-height: 0.95; letter-spacing: -0.04em; font-variant-numeric: tabular-nums; }
+.measure small { display: block; font-family: var(--font-body); font-size: 1rem; font-weight: 500; letter-spacing: 0; color: var(--muted); margin-top: 14px; }
+.spec-groups { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 32px; }
+.group { border-top: 1px solid var(--line); padding-top: 20px; display: grid; gap: 18px; }
+.group h3 { font-size: 1.15rem; }
+.group dl { margin: 0; display: grid; gap: 16px; }
+.group dt { font-size: 0.85rem; color: var(--muted); }
+.group dd { margin: 2px 0 0; font-family: var(--font-display); font-size: 1.35rem; font-weight: 600; font-variant-numeric: tabular-nums; }
+.note { margin-top: 40px; font-size: 0.85rem; color: var(--muted); }
+
+/* Prenotazione */
+#visita { padding-block: 96px 120px; background: var(--surface-2); }
+.book { display: grid; grid-template-columns: 1fr 1.25fr; gap: 64px; align-items: start; }
+.book-copy { display: grid; gap: 20px; position: sticky; top: 112px; }
+.book-copy h2 { font-size: clamp(2.2rem, 4vw, 3.4rem); }
+.book-copy p { color: var(--muted); max-width: 40ch; font-size: 1.05rem; }
+.steps { list-style: none; padding: 0; margin: 12px 0 0; display: grid; gap: 14px; }
+.steps li { display: grid; grid-template-columns: 28px 1fr; gap: 12px; align-items: baseline; color: var(--fg); }
+.steps b { font-family: var(--font-display); color: var(--accent); font-variant-numeric: tabular-nums; }
+
+.card { background: var(--surface); border-radius: var(--r-card); padding: clamp(20px, 3vw, 36px); box-shadow: 0 1px 0 var(--line), 0 24px 60px -30px rgba(10, 30, 50, 0.35); }
+form { display: grid; gap: 28px; }
+fieldset { border: 0; padding: 0; margin: 0; display: grid; gap: 12px; min-width: 0; }
+legend, .lbl { font-weight: 600; font-size: 0.95rem; padding: 0; margin-bottom: 4px; }
+.chips { display: flex; flex-wrap: wrap; gap: 8px; }
+.chip { position: relative; }
+.chip input { position: absolute; opacity: 0; inset: 0; margin: 0; cursor: pointer; }
+.chip span {
+  display: inline-flex; align-items: center; gap: 6px; min-height: 42px; padding: 0 16px; border-radius: 999px;
+  border: 1px solid var(--line); background: var(--bg); color: var(--fg); font-size: 0.93rem; white-space: nowrap;
+  transition: background .15s, border-color .15s, color .15s;
+}
+.chip span small { color: var(--muted); font-size: 0.8rem; }
+.chip input:checked + span { background: var(--accent); border-color: var(--accent); color: var(--accent-fg); }
+.chip input:checked + span small { color: inherit; opacity: .8; }
+.chip input:focus-visible + span { outline: 2px solid var(--accent); outline-offset: 2px; }
+.chip input:disabled + span { opacity: .45; text-decoration: line-through; cursor: not-allowed; }
+.chip input:disabled { cursor: not-allowed; }
+
+.fields { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+.field { display: grid; gap: 6px; min-width: 0; }
+.field.full { grid-column: 1 / -1; }
+.field label { font-weight: 600; font-size: 0.9rem; }
+.field input {
+  height: 48px; border-radius: var(--r-field); border: 1px solid var(--line); background: var(--bg); color: var(--fg);
+  padding: 0 14px; font: 400 1rem var(--font-body); width: 100%;
+}
+.field input[readonly] { color: var(--muted); }
+.field input:focus { outline: 2px solid var(--accent); outline-offset: 0; border-color: transparent; }
+.err { color: var(--error); font-size: 0.85rem; min-height: 1em; }
+.field.bad input { border-color: var(--error); }
+.privacy { display: flex; gap: 10px; align-items: flex-start; font-size: 0.9rem; color: var(--muted); }
+.privacy input { margin-top: 4px; accent-color: var(--accent); width: 18px; height: 18px; }
+.submit-row { display: flex; align-items: center; gap: 16px; flex-wrap: wrap; }
+
+.done { display: grid; gap: 16px; }
+.done h3 { font-size: 1.8rem; }
+.done p { color: var(--muted); }
+.done .summary { font-family: var(--font-display); font-size: 1.3rem; color: var(--fg); }
+.dev { border-left: 3px solid var(--accent); padding: 12px 16px; background: var(--bg); border-radius: 0 var(--r-field) var(--r-field) 0; font-size: 0.9rem; color: var(--muted); }
+
+footer { padding-block: 48px; color: var(--muted); font-size: 0.9rem; }
+footer .wrap { display: flex; justify-content: space-between; gap: 24px; flex-wrap: wrap; }
+
+/* Telefono */
+@media (max-width: 860px) {
+  .top nav a:not(.btn) { display: none; }
+  /* Telefono: niente scroll agganciato. La piscina resta in alto e cambia
+     inquadratura quando la tappa sotto entra a metà schermo. */
+  #scena { height: auto; }
+  .sticky { position: relative; height: auto; overflow: visible; }
+  #scene-canvas { position: sticky; top: calc(64px + env(safe-area-inset-top, 0px)); height: 44dvh; z-index: 1; background: var(--bg); }
+  .stages { position: relative; pointer-events: auto; }
+  .stage {
+    position: relative; left: auto; top: auto; width: auto; transform: none; max-width: 36rem;
+    min-height: 52dvh; align-content: start; padding: 28px 16px 40px; opacity: 0.35; transition: opacity .4s ease;
+  }
+  .stage.on, .stage[data-i="0"].on { opacity: 1; }
+  .stage p { font-size: 1rem; }
+  .progress { display: none; }
+  .gal-track { grid-auto-columns: 86vw; }
+  .spec-grid, .book { grid-template-columns: 1fr; gap: 40px; }
+  .spec-groups { grid-template-columns: 1fr; }
+  .book-copy { position: static; }
+  .fields { grid-template-columns: 1fr; }
+  #scheda { padding-block: 80px 64px; }
+  #visita { padding-block: 64px 80px; }
+}
+
+/* Movimento ridotto: niente scena scorrevole, tutto in colonna */
+.rm #scena { height: auto; }
+.rm .sticky { position: relative; height: auto; overflow: visible; }
+.rm #scene-canvas { position: relative; height: 62dvh; }
+.rm .stages { position: relative; display: grid; gap: 56px; padding: 48px max(16px, 6vw) 72px; pointer-events: auto; }
+.rm .stages::after { display: none; }
+.rm .stage { position: static; opacity: 1 !important; transform: none !important; width: auto; max-width: 36rem; padding: 0; }
+.rm .progress { display: none; }
+@media (prefers-reduced-motion: reduce) { .btn, .chip span { transition: none; } }
+</style>
+
+<header class="top">
+  <div class="top-in">
+    <a class="brand" href="#scena">Larice <span>Fuoriterra</span></a>
+    <nav aria-label="Sezioni">
+      <a href="#scena">Prodotto</a>
+      <a href="#realizzazioni">Realizzazioni</a>
+      <a href="#scheda">Scheda tecnica</a>
+      <a class="btn small" href="#visita">Prenota una visita</a>
+    </nav>
+  </div>
+</header>
+
+<main>
+  <section id="scena" aria-label="La piscina">
+    <div class="sticky">
+      <canvas id="scene-canvas" aria-hidden="true"></canvas>
+      <div class="stages">
+        <div class="stage live" data-i="0">
+          <span class="kicker">Piscina fuoriterra in legno</span>
+          <h1>Una piscina da guardare come un mobile.</h1>
+          <p>Larice massiccio, pensata per il giardino e montata dai nostri tecnici in due giorni.</p>
+          <div class="ctas">
+            <a class="btn" href="#visita">Prenota una visita</a>
+            <a class="btn ghost" href="#scheda">Scheda tecnica</a>
+          </div>
+        </div>
+        <div class="stage" data-i="1">
+          <h2>Il legno lavora per te.</h2>
+          <p>Doghe spesse trattate in autoclave. Con gli anni il larice prende un grigio argento e non chiede vernici.</p>
+        </div>
+        <div class="stage" data-i="2">
+          <h2>L'acqua arriva al bordo.</h2>
+          <p>Il rivestimento interno sale fino in cima: da fuori vedi l'acqua, la struttura resta nascosta.</p>
+        </div>
+        <div class="stage" data-i="3">
+          <h2>Un bordo per sedersi.</h2>
+          <p>Il coronamento è largo, piallato e smussato. In estate diventa la panchina del giardino.</p>
+        </div>
+        <div class="stage" data-i="4">
+          <h2>Su misura del tuo giardino.</h2>
+          <p>Misure su richiesta e posa nel Nord e nel Centro Italia. Prima, vieni a vederla dal vivo.</p>
+          <div class="ctas"><a class="btn" href="#visita">Prenota una visita</a></div>
+        </div>
+      </div>
+      <div class="progress" aria-hidden="true">
+        <span data-p="0" class="on">Forma</span><span data-p="1">Legno</span><span data-p="2">Acqua</span><span data-p="3">Bordo</span><span data-p="4">Giardino</span>
+      </div>
+    </div>
+  </section>
+
+  <section id="realizzazioni" aria-labelledby="real-t">
+    <div class="wrap gal-head">
+      <h2 id="real-t">Realizzazioni</h2>
+      <p>Una fuoriterra con gradoni montata nel 2025. Tocca una foto per vederla a tutto schermo.</p>
+    </div>
+    <div class="gal-track" id="gal" tabindex="0" aria-label="Foto delle realizzazioni">
+        <figure>
+          <button class="gal-item" type="button" data-i="0" aria-label="Apri a tutto schermo: Gradoni che salgono fino al bordo, con i lettini sulla platea"><img src="img/tappa-1-l.jpg" alt="Gradoni che salgono fino al bordo, con i lettini sulla platea" loading="lazy" width="1800" height="1350"></button>
+          <figcaption>Gradoni che salgono fino al bordo, con i lettini sulla platea</figcaption>
+        </figure>
+        <figure>
+          <button class="gal-item" type="button" data-i="1" aria-label="Apri a tutto schermo: Vista d'insieme con il solarium"><img src="img/tappa-0-l.jpg" alt="Vista d'insieme con il solarium" loading="lazy" width="1800" height="1350"></button>
+          <figcaption>Vista d'insieme con il solarium</figcaption>
+        </figure>
+        <figure>
+          <button class="gal-item" type="button" data-i="2" aria-label="Apri a tutto schermo: La vasca vista dall'alto"><img src="img/tappa-2-l.jpg" alt="La vasca vista dall'alto" loading="lazy" width="1800" height="1350"></button>
+          <figcaption>La vasca vista dall'alto</figcaption>
+        </figure>
+        <figure>
+          <button class="gal-item" type="button" data-i="3" aria-label="Apri a tutto schermo: Il fianco con il telo di copertura avvolgibile"><img src="img/tappa-3-l.jpg" alt="Il fianco con il telo di copertura avvolgibile" loading="lazy" width="1800" height="1350"></button>
+          <figcaption>Il fianco con il telo di copertura avvolgibile</figcaption>
+        </figure>
+    </div>
+    <div class="wrap gal-nav">
+      <button class="btn ghost round" type="button" id="gal-prev" aria-label="Foto precedente">&larr;</button>
+      <button class="btn ghost round" type="button" id="gal-next" aria-label="Foto successiva">&rarr;</button>
+    </div>
+  </section>
+
+  <dialog id="lb" aria-label="Foto a tutto schermo">
+    <div class="lb-top"><button class="btn ghost small" type="button" id="lb-close">Chiudi</button></div>
+    <div class="lb-img"><img id="lb-img" src="" alt=""></div>
+    <div class="lb-bot">
+      <button class="btn ghost round" type="button" id="lb-prev" aria-label="Foto precedente">&larr;</button>
+      <span class="lb-cap" id="lb-cap"></span>
+      <button class="btn ghost round" type="button" id="lb-next" aria-label="Foto successiva">&rarr;</button>
+    </div>
+  </dialog>
+
+  <section id="scheda" aria-labelledby="scheda-t">
+    <div class="wrap">
+      <div class="spec-grid">
+        <div class="spec-hero">
+          <h2 id="scheda-t">Scheda tecnica</h2>
+          <div class="measure">6,0 × 3,5 m<small>misura del modello in esposizione</small></div>
+        </div>
+        <div class="spec-groups">
+          <div class="group">
+            <h3>Struttura</h3>
+            <dl>
+              <div><dt>Legno</dt><dd>Larice</dd></div>
+              <div><dt>Spessore doghe</dt><dd>45 mm</dd></div>
+              <div><dt>Altezza</dt><dd>1,30 m</dd></div>
+            </dl>
+          </div>
+          <div class="group">
+            <h3>Acqua</h3>
+            <dl>
+              <div><dt>Volume</dt><dd>24 m³</dd></div>
+              <div><dt>Filtrazione</dt><dd>A sabbia</dd></div>
+              <div><dt>Rivestimento</dt><dd>Liner 75/100</dd></div>
+            </dl>
+          </div>
+          <div class="group">
+            <h3>Posa</h3>
+            <dl>
+              <div><dt>Tempi</dt><dd>2 giorni</dd></div>
+              <div><dt>Base</dt><dd>Platea in cemento</dd></div>
+              <div><dt>Garanzia struttura</dt><dd>10 anni</dd></div>
+            </dl>
+          </div>
+        </div>
+      </div>
+      <p class="note">Valori d'esempio per il prototipo: nel sito vero arrivano dalla scheda prodotto compilata nell'area riservata.</p>
+    </div>
+  </section>
+
+  <section id="visita" aria-labelledby="visita-t">
+    <div class="wrap book">
+      <div class="book-copy">
+        <h2 id="visita-t">Vieni a vederla dal vivo.</h2>
+        <p>Scegli lo showroom e l'orario. Ti mostriamo il modello montato, il legno da vicino e le finiture.</p>
+        <ol class="steps">
+          <li><b>1</b><span>Scegli dove e quando</span></li>
+          <li><b>2</b><span>Ricevi la conferma con l'invito per il calendario</span></li>
+          <li><b>3</b><span>Il giorno prima ti mandiamo un promemoria</span></li>
+        </ol>
+      </div>
+
+      <div class="card">
+        <form id="booking" novalidate>
+          <fieldset>
+            <legend>Showroom</legend>
+            <div class="chips" id="sedi"></div>
+          </fieldset>
+          <fieldset>
+            <legend>Giorno</legend>
+            <div class="chips" id="giorni"></div>
+          </fieldset>
+          <fieldset>
+            <legend>Orario</legend>
+            <div class="chips" id="orari"></div>
+          </fieldset>
+          <div class="fields">
+            <div class="field full">
+              <label for="prodotto">Prodotto</label>
+              <input id="prodotto" name="prodotto" value="Fuoriterra in larice 6,0 × 3,5 m" readonly>
+            </div>
+            <div class="field full" data-f="nome">
+              <label for="nome">Nome e cognome</label>
+              <input id="nome" name="nome" autocomplete="name">
+              <span class="err" aria-live="polite"></span>
+            </div>
+            <div class="field" data-f="email">
+              <label for="email">Email</label>
+              <input id="email" name="email" type="email" autocomplete="email">
+              <span class="err" aria-live="polite"></span>
+            </div>
+            <div class="field" data-f="tel">
+              <label for="tel">Telefono</label>
+              <input id="tel" name="tel" type="tel" autocomplete="tel">
+              <span class="err" aria-live="polite"></span>
+            </div>
+          </div>
+          <label class="privacy" for="privacy">
+            <input id="privacy" name="privacy" type="checkbox">
+            <span>Accetto che i miei dati vengano usati per organizzare la visita.</span>
+          </label>
+          <div class="submit-row">
+            <button class="btn" type="submit">Prenota la visita</button>
+            <span class="err" id="form-err" aria-live="polite"></span>
+          </div>
+        </form>
+
+        <div class="done" id="done" hidden>
+          <h3>Visita richiesta.</h3>
+          <p class="summary" id="summary"></p>
+          <p>Ti abbiamo scritto una mail di conferma con l'invito per il calendario. Il giorno prima ricevi un promemoria.</p>
+          <div class="dev">Nel kit, a questo punto: la prenotazione si salva nel database del sito, parte la mail con il file .ics e l'evento prenotazione.creata va ai webhook configurati (GHL, Make, WhatsApp).</div>
+          <div><button class="btn ghost" type="button" id="again">Prenota un'altra visita</button></div>
+        </div>
+      </div>
+    </div>
+  </section>
+</main>
+
+<footer>
+  <div class="wrap">
+    <span>Prototipo del template prodotto-scena, Kamon Showcase Kit.</span>
+    <span>Modello 3D e testi d'esempio. Le foto sono di una realizzazione 2025.</span>
+  </div>
+</footer>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.2/gsap.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.2/ScrollTrigger.min.js"></script>
+<script>
+(function () {
+  const reduce = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+  if (reduce) document.documentElement.classList.add('rm');
+
+  /* ---------- Scena 3D ---------- */
+  const canvas = document.getElementById('scene-canvas');
+  let renderer;
+  try {
+    renderer = new THREE.WebGLRenderer({ canvas, antialias: true, alpha: true });
+  } catch (e) {
+    canvas.hidden = true;
+  }
+
+  if (renderer) {
+    renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
+    renderer.shadowMap.enabled = true;
+    renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+    renderer.outputEncoding = THREE.sRGBEncoding;
+
+    const scene = new THREE.Scene();
+    const camera = new THREE.PerspectiveCamera(32, 1, 0.1, 200);
+
+    const hemi = new THREE.HemisphereLight(0xe4f2ff, 0x2b3a30, 0.8);
+    scene.add(hemi);
+    const sun = new THREE.DirectionalLight(0xfff4e0, 1.6);
+    sun.position.set(6, 10, 5);
+    sun.castShadow = true;
+    sun.shadow.mapSize.set(2048, 2048);
+    Object.assign(sun.shadow.camera, { left: -9, right: 9, top: 9, bottom: -9, near: 1, far: 30 });
+    sun.shadow.bias = -0.0005;
+    scene.add(sun);
+
+    // Venatura del legno disegnata su canvas, così la pagina non scarica immagini.
+    function rand(seed) { let s = seed; return () => (s = (s * 16807) % 2147483647) / 2147483647; }
+    function woodTexture(seed) {
+      const c = document.createElement('canvas');
+      c.width = 1024; c.height = 64;
+      const g = c.getContext('2d');
+      const r = rand(seed * 977 + 13);
+      const base = 150 + Math.floor(r() * 30);
+      g.fillStyle = `rgb(${base + 40}, ${base - 10}, ${base - 62})`;
+      g.fillRect(0, 0, 1024, 64);
+      for (let i = 0; i < 38; i++) {
+        const y = r() * 64, amp = 1 + r() * 4, freq = 0.004 + r() * 0.01, ph = r() * 6;
+        g.strokeStyle = `rgba(${70 + r() * 30}, ${40 + r() * 20}, ${20}, ${0.08 + r() * 0.22})`;
+        g.lineWidth = 0.6 + r() * 1.6;
+        g.beginPath();
+        for (let x = 0; x <= 1024; x += 16) g.lineTo(x, y + Math.sin(x * freq + ph) * amp);
+        g.stroke();
+      }
+      for (let k = 0; k < 2; k++) {
+        const kx = r() * 1024, ky = 12 + r() * 40;
+        const grd = g.createRadialGradient(kx, ky, 0, kx, ky, 9);
+        grd.addColorStop(0, 'rgba(70,38,18,0.75)'); grd.addColorStop(1, 'rgba(70,38,18,0)');
+        g.fillStyle = grd; g.beginPath(); g.ellipse(kx, ky, 12, 6, 0, 0, Math.PI * 2); g.fill();
+      }
+      const t = new THREE.CanvasTexture(c);
+      t.encoding = THREE.sRGBEncoding;
+      t.anisotropy = 4;
+      return t;
+    }
+    const woodMats = [1, 2, 3, 4, 5].map((s) => new THREE.MeshStandardMaterial({ map: woodTexture(s), roughness: 0.82 }));
+    const postMat = new THREE.MeshStandardMaterial({ map: woodTexture(9), roughness: 0.85, color: 0xc9b39c });
+
+    const pool = new THREE.Group();
+    scene.add(pool);
+
+    const L = 6.0, W = 3.5, T = 0.07, BH = 0.145, GAP = 0.008, N = 8;
+    const H = N * (BH + GAP);
+    let mi = 0;
+    function board(w, h, d, x, y, z, mat) {
+      const m = new THREE.Mesh(new THREE.BoxGeometry(w, h, d), mat || woodMats[mi++ % woodMats.length]);
+      m.position.set(x, y, z);
+      m.castShadow = true; m.receiveShadow = true;
+      pool.add(m);
+      return m;
+    }
+    for (let i = 0; i < N; i++) {
+      const y = i * (BH + GAP) + BH / 2;
+      board(L, BH, T, 0, y, W / 2);
+      board(L, BH, T, 0, y, -W / 2);
+      board(T, BH, W, L / 2, y, 0);
+      board(T, BH, W, -L / 2, y, 0);
+    }
+    [[1, 1], [1, -1], [-1, 1], [-1, -1]].forEach(([sx, sz]) => board(0.16, H + 0.01, 0.16, sx * L / 2, (H + 0.01) / 2, sz * W / 2, postMat));
+    // Coronamento
+    board(L + 0.5, 0.05, 0.3, 0, H + 0.025, W / 2 + 0.05);
+    board(L + 0.5, 0.05, 0.3, 0, H + 0.025, -W / 2 - 0.05);
+    board(0.3, 0.05, W + 0.1, L / 2 + 0.05, H + 0.025, 0);
+    board(0.3, 0.05, W + 0.1, -L / 2 - 0.05, H + 0.025, 0);
+    // Scaletta
+    for (let k = 1; k <= 3; k++) {
+      const h = k * (H / 3);
+      board(0.9, h, 0.34, 1.7, h / 2, W / 2 + T / 2 + 0.17 + 0.34 * (3 - k));
+    }
+    // Rivestimento interno
+    const liner = new THREE.Mesh(
+      new THREE.BoxGeometry(L - T, H - 0.04, W - T),
+      new THREE.MeshStandardMaterial({ color: 0x2a8fae, roughness: 0.6, side: THREE.BackSide })
+    );
+    liner.position.y = (H - 0.04) / 2;
+    liner.receiveShadow = true;
+    pool.add(liner);
+    // Acqua
+    const waterGeo = new THREE.PlaneGeometry(L - T - 0.01, W - T - 0.01, 48, 28);
+    waterGeo.rotateX(-Math.PI / 2);
+    const waterBase = waterGeo.attributes.position.array.slice();
+    const water = new THREE.Mesh(waterGeo, new THREE.MeshStandardMaterial({
+      color: 0x58c6d6, roughness: 0.06, metalness: 0.2, transparent: true, opacity: 0.86
+    }));
+    water.position.y = H - 0.1;
+    water.receiveShadow = true;
+    pool.add(water);
+    // Platea
+    const slab = new THREE.Mesh(new THREE.BoxGeometry(L + 1.4, 0.08, W + 2.4), new THREE.MeshStandardMaterial({ color: 0xb9beba, roughness: 0.95 }));
+    slab.position.set(0, -0.04, 0.4);
+    slab.receiveShadow = true;
+    scene.add(slab);
+    // Terreno che sfuma nel fondo pagina
+    const fade = document.createElement('canvas');
+    fade.width = fade.height = 256;
+    const fg = fade.getContext('2d');
+    const rg = fg.createRadialGradient(128, 128, 0, 128, 128, 128);
+    rg.addColorStop(0, '#fff'); rg.addColorStop(0.55, '#fff'); rg.addColorStop(1, '#000');
+    fg.fillStyle = rg; fg.fillRect(0, 0, 256, 256);
+    const groundMat = new THREE.MeshStandardMaterial({ color: 0x7b8582, roughness: 1, transparent: true, alphaMap: new THREE.CanvasTexture(fade) });
+    const ground = new THREE.Mesh(new THREE.CircleGeometry(22, 64), groundMat);
+    ground.rotation.x = -Math.PI / 2;
+    ground.position.y = -0.081;
+    ground.receiveShadow = true;
+    scene.add(ground);
+
+    // Tappe della camera: forma, legno, acqua, bordo, giardino.
+    const K = [
+      { pos: [8.2, 5.6, 9.4], tgt: [0, 0.45, 0.2], fov: 32, ground: 0x7b8582, sun: 0xfff4e0, sunI: 1.6, hemiI: 0.8 },
+      { pos: [0.9, 0.85, 4.6], tgt: [-1.1, 0.62, 1.75], fov: 30, ground: 0x7b8582, sun: 0xfff4e0, sunI: 1.7, hemiI: 0.8 },
+      { pos: [0.4, 7.4, 1.6], tgt: [0.1, 0.9, 0], fov: 34, ground: 0x7b8582, sun: 0xffffff, sunI: 1.8, hemiI: 0.9 },
+      { pos: [-4.6, 1.75, 3.0], tgt: [-2.4, 1.25, 1.4], fov: 30, ground: 0x6f7d6a, sun: 0xffe7c4, sunI: 1.6, hemiI: 0.8 },
+      { pos: [11.5, 7.2, 12.5], tgt: [-0.3, 0.3, 0.3], fov: 32, ground: 0x51704a, sun: 0xffc58a, sunI: 1.35, hemiI: 0.7 }
+    ];
+    const cA = new THREE.Color(), cB = new THREE.Color();
+    const tgt = new THREE.Vector3();
+    const ease = (t) => t * t * (3 - 2 * t);
+    function applyStage(p) {
+      const i = Math.min(Math.floor(p), K.length - 2);
+      const t = ease(Math.min(Math.max(p - i, 0), 1));
+      const a = K[i], b = K[i + 1];
+      camera.position.set(
+        a.pos[0] + (b.pos[0] - a.pos[0]) * t,
+        a.pos[1] + (b.pos[1] - a.pos[1]) * t,
+        a.pos[2] + (b.pos[2] - a.pos[2]) * t
+      );
+      tgt.set(a.tgt[0] + (b.tgt[0] - a.tgt[0]) * t, a.tgt[1] + (b.tgt[1] - a.tgt[1]) * t, a.tgt[2] + (b.tgt[2] - a.tgt[2]) * t);
+      camera.lookAt(tgt);
+      camera.fov = a.fov + (b.fov - a.fov) * t;
+      camera.updateProjectionMatrix();
+      groundMat.color.copy(cA.set(a.ground).lerp(cB.set(b.ground), t));
+      sun.color.copy(cA.set(a.sun).lerp(cB.set(b.sun), t));
+      sun.intensity = a.sunI + (b.sunI - a.sunI) * t;
+      hemi.intensity = a.hemiI + (b.hemiI - a.hemiI) * t;
+    }
+
+    // Su desktop la piscina sta a destra del testo, su telefono sopra.
+    function resize() {
+      const w = canvas.clientWidth, h = canvas.clientHeight;
+      if (!w || !h) return;
+      renderer.setSize(w, h, false);
+      camera.aspect = w / h;
+      if (w > 860) camera.setViewOffset(w, h, -w * 0.17, 0, w, h);
+      else camera.clearViewOffset();
+      camera.updateProjectionMatrix();
+    }
+    new ResizeObserver(resize).observe(canvas);
+    resize();
+
+    const stages = Array.from(document.querySelectorAll('.stage'));
+    const marks = Array.from(document.querySelectorAll('.progress span'));
+    let target = 0, p = 0, visible = true, lastMark = -1;
+
+    const narrow = window.matchMedia('(max-width: 860px)');
+    if (!reduce && window.gsap && window.ScrollTrigger) {
+      gsap.registerPlugin(ScrollTrigger);
+      ScrollTrigger.create({
+        trigger: '#scena', start: 'top top', end: 'bottom bottom',
+        onUpdate: (self) => { if (!narrow.matches) target = self.progress * (K.length - 1); }
+      });
+    }
+    // Telefono: la tappa che attraversa la metà bassa dello schermo guida la camera.
+    const stageIO = new IntersectionObserver((entries) => {
+      if (!narrow.matches) return;
+      entries.forEach((e) => {
+        if (!e.isIntersecting) return;
+        const i = +e.target.dataset.i;
+        target = i;
+        stages.forEach((el, k) => el.classList.toggle('on', k === i));
+      });
+    }, { rootMargin: '-55% 0px -30% 0px' });
+    stages.forEach((el) => stageIO.observe(el));
+    function onMode() {
+      if (narrow.matches) {
+        stages.forEach((el, k) => { el.style.opacity = ''; el.style.transform = ''; el.classList.toggle('on', k === Math.round(target)); el.classList.add('live'); });
+      }
+      resize();
+      if (window.ScrollTrigger) ScrollTrigger.refresh();
+    }
+    narrow.addEventListener('change', onMode);
+    onMode();
+
+    function updateText() {
+      stages.forEach((el, i) => {
+        const d = p - i;
+        const o = Math.max(0, Math.min(1, 1 - Math.abs(d) * 2.2));
+        el.style.opacity = o;
+        el.style.transform = window.innerWidth > 860
+          ? `translateY(calc(-50% + ${(-d * 40).toFixed(1)}px))`
+          : `translateY(${(-d * 30).toFixed(1)}px)`;
+        el.classList.toggle('live', o > 0.5);
+      });
+      const m = Math.round(p);
+      if (m !== lastMark) {
+        marks.forEach((s, i) => s.classList.toggle('on', i === m));
+        lastMark = m;
+      }
+    }
+
+    new IntersectionObserver((entries) => { visible = entries[0].isIntersecting; }).observe(canvas);
+
+    const pos = waterGeo.attributes.position;
+    let time = 0;
+    function frame(now) {
+      requestAnimationFrame(frame);
+      if (!visible) return;
+      if (!reduce) {
+        p += (target - p) * 0.085;
+        if (Math.abs(target - p) < 0.0005) p = target;
+        time = now * 0.001;
+        for (let v = 0; v < pos.count; v++) {
+          const x = waterBase[v * 3], z = waterBase[v * 3 + 2];
+          pos.array[v * 3 + 1] = Math.sin(x * 2.1 + time * 1.4) * 0.012 + Math.cos(z * 2.7 + time * 1.1) * 0.01;
+        }
+        pos.needsUpdate = true;
+        waterGeo.computeVertexNormals();
+        if (!narrow.matches) updateText();
+      }
+      applyStage(p);
+      renderer.render(scene, camera);
+    }
+    requestAnimationFrame(frame);
+  }
+
+  /* ---------- Realizzazioni ---------- */
+  const gal = document.getElementById('gal');
+  const galBtns = Array.from(gal.querySelectorAll('.gal-item'));
+  const step = () => (galBtns[0] ? galBtns[0].getBoundingClientRect().width + 16 : 400);
+  document.getElementById('gal-prev').addEventListener('click', () => gal.scrollBy({ left: -step(), behavior: reduce ? 'auto' : 'smooth' }));
+  document.getElementById('gal-next').addEventListener('click', () => gal.scrollBy({ left: step(), behavior: reduce ? 'auto' : 'smooth' }));
+  const lb = document.getElementById('lb'), lbImg = document.getElementById('lb-img'), lbCap = document.getElementById('lb-cap');
+  let cur = 0;
+  function show(i) {
+    cur = (i + galBtns.length) % galBtns.length;
+    const img = galBtns[cur].querySelector('img');
+    lbImg.src = img.src; lbImg.alt = img.alt; lbCap.textContent = img.alt;
+  }
+  galBtns.forEach((b, i) => b.addEventListener('click', () => {
+    show(i);
+    if (lb.showModal) lb.showModal(); else lb.setAttribute('open', '');
+  }));
+  document.getElementById('lb-prev').addEventListener('click', () => show(cur - 1));
+  document.getElementById('lb-next').addEventListener('click', () => show(cur + 1));
+  document.getElementById('lb-close').addEventListener('click', () => lb.close());
+  lb.addEventListener('keydown', (e) => {
+    if (e.key === 'ArrowRight') show(cur + 1);
+    if (e.key === 'ArrowLeft') show(cur - 1);
+  });
+  lb.addEventListener('click', (e) => { if (e.target === lb || e.target.classList.contains('lb-img')) lb.close(); });
+
+  /* ---------- Prenotazione ---------- */
+  const SEDI = ['Treviso', 'Verona', 'Milano', 'Roma', 'Videochiamata'];
+  const ORARI = ['10:00', '11:30', '15:00', '16:30'];
+  const fmtChip = new Intl.DateTimeFormat('it-IT', { weekday: 'short', day: 'numeric' });
+  const fmtMonth = new Intl.DateTimeFormat('it-IT', { month: 'short' });
+  const fmtLong = new Intl.DateTimeFormat('it-IT', { weekday: 'long', day: 'numeric', month: 'long' });
+
+  const days = [];
+  const d = new Date(); d.setHours(12, 0, 0, 0);
+  while (days.length < 6) {
+    d.setDate(d.getDate() + 1);
+    if (d.getDay() !== 0) days.push(new Date(d));
+  }
+
+  const el = (id) => document.getElementById(id);
+  function chip(name, value, label, sub, checked, disabled) {
+    const id = `${name}-${value}`.replace(/[^a-z0-9-]/gi, '');
+    return `<label class="chip" for="${id}"><input type="radio" id="${id}" name="${name}" value="${value}"${checked ? ' checked' : ''}${disabled ? ' disabled' : ''}><span>${label}${sub ? ` <small>${sub}</small>` : ''}</span></label>`;
+  }
+  el('sedi').innerHTML = SEDI.map((s, i) => chip('sede', i, s, '', i === 1, false)).join('');
+  el('giorni').innerHTML = days.map((x, i) => chip('giorno', i, fmtChip.format(x), fmtMonth.format(x), i === 0, false)).join('');
+
+  // Disponibilità finta ma stabile: in produzione la ricalcola il server.
+  function renderSlots() {
+    const s = +document.querySelector('input[name="sede"]:checked').value;
+    const g = +document.querySelector('input[name="giorno"]:checked').value;
+    const prev = document.querySelector('input[name="ora"]:checked');
+    const full = (s + g * 3) % ORARI.length;
+    el('orari').innerHTML = ORARI.map((o, i) => chip('ora', i, o, i === full ? 'pieno' : '', false, i === full)).join('');
+    const keep = prev && document.getElementById(prev.id);
+    const pick = keep && !keep.disabled ? keep : document.querySelector('input[name="ora"]:not(:disabled)');
+    pick.checked = true;
+  }
+  renderSlots();
+  el('sedi').addEventListener('change', renderSlots);
+  el('giorni').addEventListener('change', renderSlots);
+
+  const form = el('booking');
+  function setErr(name, msg) {
+    const f = form.querySelector(`[data-f="${name}"]`);
+    f.classList.toggle('bad', !!msg);
+    f.querySelector('.err').textContent = msg || '';
+  }
+  form.addEventListener('submit', (e) => {
+    e.preventDefault();
+    const nome = el('nome').value.trim(), email = el('email').value.trim(), tel = el('tel').value.trim();
+    let ok = true;
+    setErr('nome', nome.length < 3 ? 'Scrivi nome e cognome.' : ''); if (nome.length < 3) ok = false;
+    const emailOk = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
+    setErr('email', emailOk ? '' : "Controlla l'indirizzo email."); if (!emailOk) ok = false;
+    const telOk = tel.replace(/\D/g, '').length >= 8;
+    setErr('tel', telOk ? '' : 'Serve un numero per eventuali spostamenti.'); if (!telOk) ok = false;
+    el('form-err').textContent = el('privacy').checked ? '' : 'Per prenotare serve il consenso.';
+    if (!el('privacy').checked) ok = false;
+    if (!ok) return;
+
+    const sede = SEDI[+form.sede.value];
+    const giorno = fmtLong.format(days[+form.giorno.value]);
+    const ora = ORARI[+form.ora.value];
+    el('summary').textContent = sede === 'Videochiamata'
+      ? `Videochiamata, ${giorno} alle ${ora}`
+      : `Showroom di ${sede}, ${giorno} alle ${ora}`;
+    form.hidden = true;
+    el('done').hidden = false;
+  });
+  el('again').addEventListener('click', () => {
+    el('done').hidden = true;
+    form.hidden = false;
+  });
+})();
+</script>

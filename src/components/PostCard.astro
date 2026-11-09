@@ -1,0 +1,19 @@
+---
+import type { Locale } from '../lib/brand';
+import type { Post } from '../lib/content';
+import { t } from '../lib/i18n';
+import { publicUrl } from '../lib/routes';
+import { postSummary } from '../lib/seo';
+import { formatDay } from '../lib/text';
+import Img from './Img.astro';
+
+interface Props { post: Post; locale: Locale; heading?: 'h2' | 'h3' }
+const { post, locale, heading: H = 'h2' } = Astro.props;
+const summary = postSummary(post, locale, 160);
+---
+<a class="product-card post-card" href={publicUrl('posts', post, locale)}>
+  {post.cover && <div class="pic"><Img src={post.cover} alt="" sizes="(min-width: 1000px) 33vw, (min-width: 600px) 50vw, 100vw" /></div>}
+  <time datetime={post.date}>{formatDay(post.date, locale)}</time>
+  <H>{t(post.title, locale)}</H>
+  {summary && <p>{summary}</p>}
+</a>

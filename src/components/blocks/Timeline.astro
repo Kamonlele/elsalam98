@@ -1,0 +1,36 @@
+---
+import type { Locale } from '../../lib/brand';
+import type { Block } from '../../lib/content';
+import { t } from '../../lib/i18n';
+import Paras from './Paras.astro';
+import Img from '../Img.astro';
+
+/** Cronologia: la data a lato, il racconto accanto. Su telefono la data va sopra. */
+interface Props { block: Extract<Block, { kind: 'timeline' }>; locale: Locale; heading: 'h1' | 'h2' }
+const { block, locale, heading: H } = Astro.props;
+const title = t(block.title, locale);
+const Sub = H === 'h1' ? 'h2' : 'h3';
+const isFile = (href: string) => /\.pdf($|\?)/i.test(href);
+---
+{block.items.length > 0 && (
+  <section class="blk wrap b-timeline">
+    {title && <H data-reveal>{title}</H>}
+    <ol>
+      {block.items.map((it) => (
+        <li data-reveal>
+          <p class="tl-date">{t(it.date, locale)}</p>
+          <div class="tl-body">
+            <Sub>{t(it.title, locale)}</Sub>
+            {it.text && <Paras text={t(it.text, locale)} />}
+            {it.photo && <figure class="tl-photo"><Img src={it.photo} alt={t(it.title, locale)} sizes="(min-width: 900px) 52rem, 100vw" /></figure>}
+            {it.link && (
+              <a class="tl-link" href={it.link.href} target={isFile(it.link.href) ? '_blank' : undefined} rel={isFile(it.link.href) ? 'noopener' : undefined}>
+                {t(it.link.label, locale)}{isFile(it.link.href) && <span class="tag">PDF</span>}
+              </a>
+            )}
+          </div>
+        </li>
+      ))}
+    </ol>
+  </section>
+)}

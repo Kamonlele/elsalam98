@@ -1,0 +1,113 @@
+---
+import Admin from '../../layouts/Admin.astro';
+import { booking as rules } from '../../lib/brand';
+import { settingsForAdmin } from '../../lib/settings';
+import { EVENTS, recentDeliveries } from '../../lib/webhooks';
+
+const settings = await settingsForAdmin();
+const log = await recentDeliveries(30);
+const boot = JSON.stringify({ webhooks: settings.webhooks, events: EVENTS }).replace(/</g, '\\u003c');
+const fmt = new Intl.DateTimeFormat('it-IT', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit', timeZone: rules.timezone });
+const ST: Record<string, string> = { inviato: 'Consegnato', in_coda: 'In attesa di riprovare', fallito: 'Non consegnato' };
+---
+<Admin title="Impostazioni" current="impostazioni">
+  <div class="page">
+    <div class="page-head">
+      <div>
+        <h1>Impostazioni</h1>
+        <p>Email delle prenotazioni e collegamenti verso CRM e automazioni.</p>
+      </div>
+    </div>
+
+    <form id="settings" class="stack" novalidate>
+      <section class="card">
+        <h2>Email</h2>
+        <p class="intro">Le email partono con Brevo: conferme e promemoria a chi prenota, avviso a voi a ogni nuova prenotazione. Senza chiave le prenotazioni funzionano lo stesso, ma nessuno riceve email.</p>
+        <div class="fields">
+          <div class="field">
+            <label for="s-key">Chiave API di Brevo</label>
+            <input id="s-key" name="brevoApiKey" type="text" autocomplete="off" value={settings.brevoApiKey} placeholder="xkeysib-..." />
+            <span class="help">Si trova in Brevo, Impostazioni, Chiavi API. Qui si vedono solo le ultime cifre.</span>
+          </div>
+          <div class="two">
+            <div class="field"><label for="s-from">Mittente</label><input id="s-from" name="mailFrom" type="email" value={settings.mailFrom} placeholder="info@azienda.it" /><span class="help">Deve essere un indirizzo verificato in Brevo.</span></div>
+            <div class="field"><label for="s-fromname">Nome del mittente</label><input id="s-fromname" name="mailFromName" type="text" value={settings.mailFromName} /></div>
+          </div>
+          <div class="field">
+            <label for="s-notify">Avvisa di ogni nuova prenotazione</label>
+            <input id="s-notify" name="notifyEmails" type="text" value={settings.notifyEmails} placeholder="showroom@azienda.it, commerciale@azienda.it" />
+            <span class="help">Uno o più indirizzi, separati da virgola.</span>
+          </div>
+        </div>
+      </section>
+
+      <section class="card">
+        <h2>Collegamenti (webhook)</h2>
+        <p class="intro">A ogni evento scelto il sito manda i dati della prenotazione a questi indirizzi: GoHighLevel, Make, Zapier o altro. Se l'indirizzo non risponde, si riprova da solo per un giorno intero. In GoHighLevel: crea un workflow con trigger "Inbound Webhook" e incolla qui l'indirizzo che ti dà.</p>
+        <div id="hooks" class="list" style="margin-top:16px"></div>
+        <div style="margin-top:12px"><button class="btn ghost small" type="button" id="add-hook">+ Aggiungi un collegamento</button></div>
+      </section>
+
+      <section class="card">
+        <h2>Protezione dai robot</h2>
+        <p class="intro">Il modulo ha già due protezioni invisibili. Per siti molto presi di mira si può aggiungere Cloudflare Turnstile: la chiave pubblica va in brand.json (booking.turnstileSiteKey), quella segreta qui.</p>
+        <div class="fields">
+          <div class="field">
+            <label for="s-turn">Chiave segreta di Turnstile</label>
+            <input id="s-turn" name="turnstileSecret" type="text" autocomplete="off" value={settings.turnstileSecret} />
+            {!rules.turnstileSiteKey && <span class="help">Turnstile non è attivo: manca la chiave pubblica in brand.json.</span>}
+          </div>
+        </div>
+      </section>
+
+      <section class="card">
+        <h2>Cookie e statistiche</h2>
+        <p class="intro">Il banner dei cookie e le informative sono di iubenda; Google Tag Manager parte solo dopo il consenso del visitatore. Senza questi ID il sito non carica nulla di tutto ciò. Gli ID sono pubblici, non segreti.</p>
+        <div class="fields">
+          <div class="two">
+            <div class="field"><label for="s-iub">ID del sito iubenda</label><input id="s-iub" name="iubendaSiteId" type="text" inputmode="numeric" autocomplete="off" value={settings.iubendaSiteId} placeholder="1234567" /><span class="help">Solo cifre. In iubenda: Cookie Solution, Impostazioni.</span></div>
+            <div class="field"><label for="s-iubp">ID della policy iubenda</label><input id="s-iubp" name="iubendaPolicyId" type="text" inputmode="numeric" autocomplete="off" value={settings.iubendaPolicyId} placeholder="7654321" /><span class="help">Solo cifre. Serve anche per le pagine di privacy e cookie.</span></div>
+          </div>
+          <div class="field"><label for="s-gtm">ID di Google Tag Manager</label><input id="s-gtm" name="gtmId" type="text" autocomplete="off" value={settings.gtmId} placeholder="GTM-XXXXXX" /></div>
+        </div>
+      </section>
+
+      <div class="toolbar">
+        <p class="msg" role="alert"></p>
+        <button class="btn" type="submit">Salva le impostazioni</button>
+      </div>
+    </form>
+
+    <section class="card">
+      <h2>Registro dei collegamenti</h2>
+      <p class="intro">Gli ultimi invii ai webhook. Ogni 15 minuti il sito riprova quelli non consegnati e manda i promemoria del giorno dopo.</p>
+      <div style="margin:14px 0"><button class="btn ghost small" type="button" id="run-now">Esegui adesso</button></div>
+      {log.length === 0 ? <p class="help">Ancora nessun invio.</p> : (
+        <div class="scroll">
+          <table class="log">
+            <thead><tr><th>Quando</th><th>Collegamento</th><th>Evento</th><th>Esito</th><th>Tentativi</th><th>Dettaglio</th><th></th></tr></thead>
+            <tbody>
+              {log.map((d) => (
+                <tr>
+                  <td>{fmt.format(d.created_at)}</td>
+                  <td>{d.endpoint_name}</td>
+                  <td>{d.event}</td>
+                  <td class={`st-${d.status}`}>{ST[d.status] ?? d.status}{d.status === 'in_coda' && d.next_at && <><br /><small>prossimo {fmt.format(d.next_at)}</small></>}</td>
+                  <td>{d.attempts}</td>
+                  <td class:list={['det', d.status !== 'inviato' && 'err']}>{d.status === 'inviato' ? (d.last_code ? `risposta ${d.last_code}` : '') : d.last_error}</td>
+                  <td>{d.status !== 'inviato' && <button class="btn ghost small" type="button" data-retry={d.id}>Riprova</button>}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
+    </section>
+  </div>
+  <script type="application/json" id="st-boot" is:inline set:html={boot}></script>
+</Admin>
+
+<script>
+  import { initSettings } from '../../scripts/admin/settings';
+  initSettings();
+</script>

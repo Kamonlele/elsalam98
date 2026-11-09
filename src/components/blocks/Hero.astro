@@ -1,0 +1,27 @@
+---
+import type { Locale } from '../../lib/brand';
+import type { Block } from '../../lib/content';
+import { t } from '../../lib/i18n';
+import Paras from './Paras.astro';
+import Img from '../Img.astro';
+
+interface Props { block: Extract<Block, { kind: 'hero' }>; locale: Locale; heading: 'h1' | 'h2' }
+const { block, locale, heading: H } = Astro.props;
+const media = !!(block.photo || block.video);
+const position = block.focus ?? '50% 50%';
+---
+<section class:list={['blk', 'hero', { 'has-media': media }]} data-reveal>
+  {media && (
+    <div class="hero-media" aria-hidden="true">
+      {block.photo && <Img src={block.photo} alt="" sizes="100vw" fit="cover" focus={position} eager />}
+      {/* Niente autoplay nell'HTML: lo fa partire blocks.ts, e solo senza movimento ridotto.
+          Così, anche senza script, chi ha chiesto meno movimento non lo vede mai partire. */}
+      {block.video && <video src={block.video} poster={block.photo} muted loop playsinline preload={block.photo ? 'none' : 'metadata'} style={`object-position:${position}`}></video>}
+    </div>
+  )}
+  <div class="wrap hero-copy">
+    <H>{t(block.title, locale)}</H>
+    <Paras text={t(block.text, locale)} />
+    {block.cta && <a class="btn" href={block.cta.href}>{t(block.cta.label, locale)}</a>}
+  </div>
+</section>

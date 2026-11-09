@@ -1,0 +1,29 @@
+---
+import type { Locale } from '../../lib/brand';
+import type { Block } from '../../lib/content';
+import { t } from '../../lib/i18n';
+import Img from '../Img.astro';
+
+/**
+ * Foto intere in colonne. Senza script ogni foto è un link al file; con lo script
+ * si apre il visore a tutto schermo condiviso da tutti i blocchi (Blocks.astro).
+ */
+interface Props { block: Extract<Block, { kind: 'gallery' }>; locale: Locale; heading: 'h1' | 'h2' }
+const { block, locale, heading: H } = Astro.props;
+const title = t(block.title, locale);
+---
+{block.photos.length > 0 && (
+  <section class="blk wrap b-gallery" data-reveal>
+    {title && <H>{title}</H>}
+    <div class="bg-grid">
+      {block.photos.map((ph) => (
+        <figure>
+          <a href={ph.src} data-lightbox>
+            <Img src={ph.src} alt={t(ph.caption, locale)} width={ph.width || undefined} height={ph.height || undefined} sizes="(min-width: 900px) 33vw, 100vw" />
+          </a>
+          {t(ph.caption, locale) && <figcaption>{t(ph.caption, locale)}</figcaption>}
+        </figure>
+      ))}
+    </div>
+  </section>
+)}

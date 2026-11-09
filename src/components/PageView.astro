@@ -1,0 +1,36 @@
+---
+import Base from '../layouts/Base.astro';
+import Blocks from './Blocks.astro';
+import { brand, type Locale } from '../lib/brand';
+import type { Page } from '../lib/content';
+import { t, ui, url } from '../lib/i18n';
+import type { Site } from '../lib/routes';
+import { list } from '../lib/store';
+import { blocksSummary, breadcrumbLd, localBusinessLd } from '../lib/seo';
+import { publicUrl } from '../lib/routes';
+
+interface Props { locale: Locale; page: Page; site: Site; alternates: Partial<Record<Locale, string>> }
+const { locale, page, site, alternates } = Astro.props;
+const title = t(page.seo?.title, locale) || (page.home ? brand.identity.name : `${t(page.title, locale)} | ${brand.identity.name}`);
+const description = t(page.seo?.description, locale) || (page.home ? t(brand.identity.tagline, locale) : blocksSummary(page.blocks, locale) || undefined);
+// Se la pagina si apre con un blocco d'apertura, è quello a fare da titolo.
+const hero = page.blocks[0]?.kind === 'hero' ? page.blocks[0] : undefined;
+const image = page.seo?.image || hero?.photo;
+const hasLocations = page.blocks.some((b) => b.kind === 'locations');
+const origin = brand.identity.siteUrl.replace(/\/$/, '');
+// La home non ha percorso.
+const crumbs = page.home ? [] : [breadcrumbLd([
+  { name: ui(locale, 'crumbHome'), url: url(locale) },
+  { name: t(page.title, locale), url: publicUrl('pages', page, locale) },
+], origin)];
+const jsonLd = [...(page.home || hasLocations ? localBusinessLd(await list('locations'), origin) : []), ...crumbs];
+const opensWithHero = page.blocks[0]?.kind === 'hero';
+---
+<Base locale={locale} title={title} description={description} alternates={alternates} image={image} jsonLd={jsonLd}>
+  {!opensWithHero && (
+    <section class="wrap page-view">
+      <h1>{t(page.title, locale)}</h1>
+    </section>
+  )}
+  <Blocks blocks={page.blocks} locale={locale} site={site} h1First={opensWithHero} />
+</Base>

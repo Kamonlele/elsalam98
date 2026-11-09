@@ -1,0 +1,114 @@
+---
+import { booking as rules, type Locale } from '../lib/brand';
+import type { Location } from '../lib/content';
+import { t, ui, type UiKey } from '../lib/i18n';
+import { readSettings } from '../lib/settings';
+
+interface Props { locale: Locale; product?: { id: string; name: string }; locations: Location[]; title?: string }
+const { locale, product, locations, title } = Astro.props;
+const settings = await readSettings();
+
+const KEYS: UiKey[] = ['errName', 'errEmail', 'errPhone', 'errConsent', 'errCity', 'errQuestion', 'errFull', 'errGone', 'errTooMany', 'errRobot',
+  'errGeneric', 'at', 'videocall', 'showroomOf', 'full', 'loading', 'noSlots', 'send', 'sending', 'doneTitle', 'doneText', 'doneTitlePending',
+  'doneTextPending', 'mailSent'];
+const data = {
+  locale,
+  product: product?.id ?? '',
+  locations: locations.map((l) => ({ id: l.id, label: l.kind === 'video' ? ui(locale, 'videocall') : (l.city || t(l.name, locale)), kind: l.kind })),
+  askCity: rules.askCity,
+  questions: rules.questions.map((q) => q.id),
+  turnstile: rules.turnstileSiteKey && settings.turnstileSecret ? rules.turnstileSiteKey : '',
+  email: !!(settings.brevoApiKey && settings.mailFrom),
+  text: Object.fromEntries(KEYS.map((k) => [k, ui(locale, k)])),
+};
+---
+<section id="visita" aria-labelledby="visita-t">
+  <div class="wrap book">
+    <div class="book-copy">
+      <h2 id="visita-t">{title || ui(locale, 'bookTitle')}</h2>
+      <p>{ui(locale, 'bookIntro')}</p>
+      <ol class="steps">
+        <li><b>1</b><span>{ui(locale, 'step1')}</span></li>
+        <li><b>2</b><span>{ui(locale, 'step2')}</span></li>
+        <li><b>3</b><span>{ui(locale, 'step3')}</span></li>
+      </ol>
+    </div>
+
+    <div class="card" id="booking-root" data-booking={JSON.stringify(data)}>
+      <form id="booking" novalidate>
+        <fieldset><legend>{ui(locale, 'where')}</legend><div class="chips" id="sedi"></div></fieldset>
+        <fieldset><legend>{ui(locale, 'day')}</legend><div class="chips" id="giorni" aria-live="polite"></div></fieldset>
+        <fieldset><legend>{ui(locale, 'time')}</legend><div class="chips" id="orari"></div></fieldset>
+        <div class="fields">
+          {product && (
+            <div class="field full">
+              <label for="prodotto">{ui(locale, 'product')}</label>
+              <input id="prodotto" value={product.name} readonly />
+            </div>
+          )}
+          <div class="field full" data-f="nome">
+            <label for="nome">{ui(locale, 'name')}</label>
+            <input id="nome" name="nome" autocomplete="name" />
+            <span class="err" aria-live="polite"></span>
+          </div>
+          <div class="field" data-f="email">
+            <label for="email">{ui(locale, 'email')}</label>
+            <input id="email" name="email" type="email" autocomplete="email" />
+            <span class="err" aria-live="polite"></span>
+          </div>
+          <div class="field" data-f="tel">
+            <label for="tel">{ui(locale, 'phone')}</label>
+            <input id="tel" name="tel" type="tel" autocomplete="tel" />
+            <span class="err" aria-live="polite"></span>
+          </div>
+          {rules.askCity && (
+            <div class="field full" data-f="comune">
+              <label for="comune">{ui(locale, 'city')}</label>
+              <input id="comune" name="comune" autocomplete="address-level2" />
+              <span class="err" aria-live="polite"></span>
+            </div>
+          )}
+          {rules.questions.map((q) => (
+            <div class="field full" data-f={`q-${q.id}`}>
+              <label for={`q-${q.id}`}>{t(q.label, locale)}</label>
+              <select id={`q-${q.id}`} name={`q-${q.id}`}>
+                <option value="">{ui(locale, 'choose')}</option>
+                {q.options.map((o) => <option value={o.value}>{t(o.label, locale)}</option>)}
+              </select>
+              <span class="err" aria-live="polite"></span>
+            </div>
+          ))}
+          <div class="hp" aria-hidden="true">
+            <label for="sito">Sito web</label>
+            <input id="sito" name="sito" tabindex="-1" autocomplete="off" />
+          </div>
+        </div>
+        {data.turnstile && <div class="cf-turnstile" data-sitekey={data.turnstile} data-language={locale}></div>}
+        <label class="privacy" for="privacy">
+          <input id="privacy" name="privacy" type="checkbox" />
+          <span>{ui(locale, 'consent')}</span>
+        </label>
+        <div class="submit-row">
+          <button class="btn" type="submit">{ui(locale, 'send')}</button>
+          <span class="err" id="form-err" aria-live="polite"></span>
+        </div>
+      </form>
+      <div class="done" id="done" hidden>
+        <h3 id="done-title"></h3>
+        <p class="summary" id="summary"></p>
+        <p id="done-text"></p>
+        <div class="done-acts">
+          <a class="btn" id="ics" download="visita.ics">{ui(locale, 'addCalendar')}</a>
+          <button class="btn ghost" type="button" id="again">{ui(locale, 'again')}</button>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+{data.turnstile && <script is:inline src="https://challenges.cloudflare.com/turnstile/v0/api.js" async defer></script>}
+
+<script>
+  import { initBooking } from '../scripts/booking';
+  const root = document.getElementById('booking-root');
+  if (root) initBooking(root);
+</script>

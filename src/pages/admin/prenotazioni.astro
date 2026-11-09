@@ -1,0 +1,116 @@
+---
+import Admin from '../../layouts/Admin.astro';
+import { booking as rules, DEFAULT_LOCALE, features } from '../../lib/brand';
+import { countNew, listBookings, type Booking, type View } from '../../lib/booking';
+import { t } from '../../lib/i18n';
+
+if (!features.booking) return Astro.redirect('/admin/prodotti');
+const VIEWS: { id: View; label: string }[] = [
+  { id: 'prossime', label: 'Prossime' },
+  { id: 'da-confermare', label: 'Da confermare' },
+  { id: 'passate', label: 'Passate' },
+  { id: 'annullate', label: 'Annullate' },
+];
+const view = (VIEWS.find((v) => v.id === Astro.url.searchParams.get('vista'))?.id ?? 'prossime') as View;
+const rows = await listBookings(view);
+const pending = await countNew();
+
+const byDay = new Map<string, Booking[]>();
+for (const b of rows) byDay.set(b.date, [...(byDay.get(b.date) ?? []), b]);
+const dayName = (date: string) => {
+  const [y, m, d] = date.split('-').map(Number);
+  return new Intl.DateTimeFormat('it-IT', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric', timeZone: 'UTC' }).format(new Date(Date.UTC(y, m - 1, d)));
+};
+const answer = (b: Booking, id: string) => {
+  const q = rules.questions.find((x) => x.id === id);
+  const o = q?.options.find((x) => x.value === b.answers[id]);
+  return o ? t(o.label, DEFAULT_LOCALE) : b.answers[id];
+};
+const source = (b: Booking) => {
+  const s = b.source;
+  if (s.utm_source || s.utm_campaign) return [s.utm_source, s.utm_campaign].filter(Boolean).join(' · ');
+  if (s.gclid) return 'Google Ads';
+  if (s.fbclid) return 'Meta';
+  if (s.referrer) { try { return new URL(s.referrer).hostname.replace(/^www\./, ''); } catch { return s.referrer; } }
+  return 'Diretto';
+};
+const LABEL: Record<string, string> = { nuova: 'Da confermare', confermata: 'Confermata', annullata: 'Annullata', presente: 'È venuto', assente: 'Non è venuto' };
+const past = view === 'passate';
+---
+<Admin title="Prenotazioni" current="prenotazioni">
+  <div class="page">
+    <div class="page-head">
+      <div>
+        <h1>Prenotazioni</h1>
+        <p>Le visite prenotate dal sito. Ogni cambio può avvisare il cliente via email.</p>
+      </div>
+      <a class="btn ghost" href="/api/admin/prenotazioni.csv">Scarica tutte (CSV)</a>
+    </div>
+
+    <nav class="tabs" aria-label="Viste">
+      {VIEWS.map((v) => (
+        <a href={`?vista=${v.id}`} aria-current={v.id === view ? 'page' : undefined}>
+          {v.label}{v.id === 'da-confermare' && pending > 0 && <span class="count">{pending}</span>}
+        </a>
+      ))}
+    </nav>
+
+    <div class="toolbar">
+      <label class="check"><input type="checkbox" id="notify" checked /> Avvisa il cliente via email quando cambi una prenotazione</label>
+    </div>
+
+    {rows.length === 0 && (
+      <div class="empty">
+        <h2>{view === 'da-confermare' ? 'Niente da confermare' : 'Nessuna prenotazione qui'}</h2>
+        <p>Le prenotazioni arrivano dal modulo "Prenota una visita" nelle pagine dei prodotti. Gli orari si decidono nelle <a href="/admin/sedi">sedi</a>.</p>
+      </div>
+    )}
+
+    <div id="bookings" class="stack">
+      {[...byDay].map(([date, list]) => (
+        <section class="day">
+          <h2>{dayName(date)}</h2>
+          {list.map((b) => (
+            <article class:list={['bk', b.status]} data-id={b.id}>
+              <div class="when"><b>{b.time}</b><span>{b.locationLabel}</span></div>
+              <div class="who">
+                <h3>{b.name}</h3>
+                <div class="contact">
+                  <a href={`tel:${b.phone.replace(/[^\d+]/g, '')}`}>{b.phone}</a>
+                  <a href={`mailto:${b.email}`}>{b.email}</a>
+                  {b.city && <span>{b.city}</span>}
+                </div>
+                <div class="facts">
+                  {b.productName && <span class="chip">{b.productName}</span>}
+                  {Object.keys(b.answers).map((id) => <span class="chip">{answer(b, id)}</span>)}
+                  <span class="chip src" title="Da dove è arrivato">{source(b)}</span>
+                  {b.locale !== DEFAULT_LOCALE && <span class="chip src">{b.locale.toUpperCase()}</span>}
+                  <span class="chip src" title="Codice prenotazione">{b.ref}</span>
+                </div>
+              </div>
+              <div class="side-acts">
+                <span class:list={['badge', b.status]}>{LABEL[b.status]}</span>
+                <div class="acts">
+                  {!past && b.status === 'nuova' && <button class="btn small" type="button" data-act="conferma">Conferma</button>}
+                  {!past && b.status !== 'annullata' && <button class="btn ghost small" type="button" data-act="sposta">Sposta</button>}
+                  {!past && b.status !== 'annullata' && <button class="btn danger small" type="button" data-act="annulla">Annulla</button>}
+                  {past && <button class="btn ghost small" type="button" data-act="presente" aria-pressed={b.status === 'presente'}>È venuto</button>}
+                  {past && <button class="btn ghost small" type="button" data-act="assente" aria-pressed={b.status === 'assente'}>Non è venuto</button>}
+                </div>
+              </div>
+              <details>
+                <summary>{b.note ? 'Nota interna' : 'Aggiungi una nota interna'}</summary>
+                <textarea aria-label="Nota interna" data-note>{b.note ?? ''}</textarea>
+              </details>
+            </article>
+          ))}
+        </section>
+      ))}
+    </div>
+  </div>
+</Admin>
+
+<script>
+  import { initBookings } from '../../scripts/admin/bookings';
+  initBookings();
+</script>

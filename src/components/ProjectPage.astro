@@ -1,0 +1,28 @@
+---
+import Base from '../layouts/Base.astro';
+import Gallery from './Gallery.astro';
+import { brand, type Locale } from '../lib/brand';
+import type { Project } from '../lib/content';
+import { t, ui, url } from '../lib/i18n';
+import { publicUrl } from '../lib/routes';
+import { breadcrumbLd } from '../lib/seo';
+
+interface Props { locale: Locale; project: Project; alternates: Partial<Record<Locale, string>> }
+const { locale, project, alternates } = Astro.props;
+const title = t(project.seo?.title, locale) || `${t(project.title, locale)} | ${brand.identity.name}`;
+const description = t(project.seo?.description, locale) || t(project.intro, locale) || undefined;
+// "Realizzazioni" non ha una pagina sua: un anello senza indirizzo valido sarebbe un errore per Google.
+const crumbs = breadcrumbLd([
+  { name: ui(locale, 'crumbHome'), url: url(locale) },
+  { name: t(project.title, locale), url: publicUrl('projects', project, locale) },
+], brand.identity.siteUrl.replace(/\/$/, ''));
+const meta = [project.place, project.year].filter(Boolean).join(' · ');
+---
+<Base locale={locale} title={title} description={description} alternates={alternates} image={project.seo?.image || project.cover || project.photos[0]?.src} jsonLd={[crumbs]}>
+  <section class="wrap home-hero">
+    <h1>{t(project.title, locale)}</h1>
+    {meta && <p>{meta}</p>}
+    {t(project.intro, locale) && <p>{t(project.intro, locale)}</p>}
+  </section>
+  {project.photos.length > 0 && <Gallery locale={locale} photos={project.photos} />}
+</Base>

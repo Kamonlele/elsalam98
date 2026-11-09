@@ -1,0 +1,37 @@
+---
+import { booking, type Locale } from '../../lib/brand';
+import type { Block, Location } from '../../lib/content';
+import { t, ui } from '../../lib/i18n';
+import { openingHours } from '../../lib/text';
+
+/** Le sedi da visitare (le videochiamate non hanno un indirizzo). Orari dalle fasce di prenotazione. */
+interface Props { block: Extract<Block, { kind: 'locations' }>; locale: Locale; locations: Location[]; heading: 'h1' | 'h2' }
+const { block, locale, locations, heading: H } = Astro.props;
+const title = t(block.title, locale);
+const places = locations.filter((l) => l.kind === 'showroom');
+const Sub = H === 'h1' ? 'h2' : 'h3';
+---
+{places.length > 0 && (
+  <section class="blk wrap b-locations" data-reveal>
+    {title && <H>{title}</H>}
+    <ul>
+      {places.map((l) => {
+        const hours = openingHours(l.slots, booking.visitMinutes, locale);
+        return (
+          <li>
+            <Sub>{t(l.name, locale)}{l.city && !t(l.name, locale).includes(l.city) ? `, ${l.city}` : ''}</Sub>
+            {l.address && <p class="addr">{l.address}</p>}
+            {hours.length > 0 && (
+              <dl aria-label={ui(locale, 'hours')}>
+                {hours.map((r) => <div><dt>{r.days}</dt><dd>{r.hours}</dd></div>)}
+              </dl>
+            )}
+            {l.address && (
+              <a class="btn ghost small" href={`https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(l.address)}`} target="_blank" rel="noopener">{ui(locale, 'directions')}</a>
+            )}
+          </li>
+        );
+      })}
+    </ul>
+  </section>
+)}

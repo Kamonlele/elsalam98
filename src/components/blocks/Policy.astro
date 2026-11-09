@@ -1,0 +1,26 @@
+---
+import type { Locale } from '../../lib/brand';
+import type { Block } from '../../lib/content';
+import { ui } from '../../lib/i18n';
+
+interface Props { block: Extract<Block, { kind: 'policy' }>; locale: Locale; policyId: string; heading: 'h1' | 'h2' }
+const { block, locale, policyId, heading: H } = Astro.props;
+const cookie = block.policy === 'cookie';
+const title = ui(locale, cookie ? 'cookiePolicy' : 'privacy');
+// Gli ID sono controllati al salvataggio (solo cifre); qui si ricontrolla perché finiscono in un indirizzo.
+const href = /^\d{1,12}$/.test(policyId)
+  ? `https://www.iubenda.com/privacy-policy/${policyId}${cookie ? '/cookie-policy' : ''}`
+  : '';
+---
+{href && (
+  <section class="blk wrap b-text b-policy">
+    <H>{title}</H>
+    <a href={href} class="iubenda-white no-brand iubenda-noiframe iubenda-embed iub-body-embed" title={title}>{title}</a>
+    <script is:inline>
+      (function (w, d) {
+        var loader = function () { var s = d.createElement('script'), tag = d.getElementsByTagName('script')[0]; s.src = 'https://cdn.iubenda.com/iubenda.js'; tag.parentNode.insertBefore(s, tag); };
+        if (w.addEventListener) w.addEventListener('load', loader, false); else if (w.attachEvent) w.attachEvent('onload', loader); else w.onload = loader;
+      })(window, document);
+    </script>
+  </section>
+)}

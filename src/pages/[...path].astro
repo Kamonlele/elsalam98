@@ -1,0 +1,80 @@
+---
+/**
+ * Un solo punto d'ingresso per tutte le pagine pubbliche, così gli URL possono
+ * essere tradotti anche nei pezzi fissi (/prodotti/... in italiano, /en/products/... in inglese).
+ */
+import Base from '../layouts/Base.astro';
+import Home from '../components/Home.astro';
+import ProductPage from '../components/ProductPage.astro';
+import CategoryPage from '../components/CategoryPage.astro';
+import ProjectPage from '../components/ProjectPage.astro';
+import PageView from '../components/PageView.astro';
+import PostList from '../components/PostList.astro';
+import PostPage from '../components/PostPage.astro';
+import { DEFAULT_LOCALE, LOCALES, brand, features, type Locale } from '../lib/brand';
+import { isLocale, t, ui, url, type T } from '../lib/i18n';
+import { postsPageUrl, publicUrl, resolve, visiblePosts, type Kind } from '../lib/routes';
+import { localNow } from '../lib/booking';
+import { list } from '../lib/store';
+import { localBusinessLd } from '../lib/seo';
+import { findRedirect } from '../lib/redirects';
+
+const parts = (Astro.params.path ?? '').split('/').filter(Boolean);
+let locale: Locale = DEFAULT_LOCALE;
+if (parts[0] && parts[0] !== DEFAULT_LOCALE && isLocale(parts[0])) locale = parts.shift() as Locale;
+
+const [pages, categories, products, projects, allPosts] = await Promise.all([
+  list('pages'), list('categories'), list('products'), list('projects'), features.blog ? list('posts') : [],
+]);
+// "Oggi" è il giorno del sito, non quello del server (i Workers sono in UTC).
+const today = localNow().date;
+const posts = features.blog ? visiblePosts(allPosts, today) : [];
+const site = { pages, categories, products, projects, posts };
+const view = resolve(parts, locale, site, { today });
+
+const alternates: Partial<Record<Locale, string>> = {};
+const target: { kind: Kind; item: { slug: T; home?: boolean } } | undefined =
+  view.kind === 'page' ? { kind: 'pages', item: view.page }
+  : view.kind === 'category' ? { kind: 'categories', item: view.category }
+  : view.kind === 'product' ? { kind: 'products', item: view.product }
+  : view.kind === 'project' ? { kind: 'projects', item: view.project }
+  : view.kind === 'post' ? { kind: 'posts', item: view.post }
+  : undefined;
+for (const l of LOCALES) {
+  if (view.kind === 'home') alternates[l] = url(l);
+  else if (view.kind === 'posts') alternates[l] = postsPageUrl(l, view.page);
+  else if (target) alternates[l] = publicUrl(target.kind, target.item, l);
+}
+if (view.kind === 'missing') {
+  const moved = await findRedirect(Astro.url.pathname);
+  if (moved) return Astro.redirect(moved, 301);
+  Astro.response.status = 404;
+}
+---
+{view.kind === 'home' && !view.page && (
+  <Base
+    locale={locale}
+    title={brand.identity.name}
+    description={t(brand.identity.tagline, locale)}
+    alternates={alternates}
+    image={products[0]?.cover}
+    jsonLd={localBusinessLd(await list('locations'), brand.identity.siteUrl.replace(/\/$/, ''))}
+  >
+    <Home locale={locale} products={products} />
+  </Base>
+)}
+{view.kind === 'home' && view.page && <PageView locale={locale} page={view.page} site={site} alternates={alternates} />}
+{view.kind === 'page' && <PageView locale={locale} page={view.page} site={site} alternates={alternates} />}
+{view.kind === 'category' && <CategoryPage locale={locale} category={view.category} site={site} alternates={alternates} />}
+{view.kind === 'product' && <ProductPage locale={locale} product={view.product} alternates={alternates} />}
+{view.kind === 'project' && <ProjectPage locale={locale} project={view.project} alternates={alternates} />}
+{view.kind === 'posts' && <PostList locale={locale} posts={posts} page={view.page} alternates={alternates} />}
+{view.kind === 'post' && <PostPage locale={locale} post={view.post} others={posts} alternates={alternates} />}
+{view.kind === 'missing' && (
+  <Base locale={locale} title={ui(locale, 'notFound')} alternates={{ [locale]: url(locale) }}>
+    <section class="wrap not-found">
+      <h1>{ui(locale, 'notFound')}</h1>
+      <a class="btn" href={url(locale)}>{ui(locale, 'home')}</a>
+    </section>
+  </Base>
+)}

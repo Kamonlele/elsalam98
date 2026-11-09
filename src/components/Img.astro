@@ -1,0 +1,43 @@
+---
+import { BLUR_ONLOAD, blurStyle, variantsOf } from '../lib/images';
+
+/**
+ * Foto pubblica. Se esiste in più misure il browser sceglie la più adatta (`srcset`)
+ * e intanto si vede la miniatura sfocata; le foto vecchie restano un `<img>` semplice.
+ * `fit="cover"` solo per gli sfondi di blocco: le foto dei prodotti restano intere.
+ */
+interface Props {
+  src: string;
+  alt: string;
+  sizes: string;
+  focus?: string;
+  fit?: 'cover' | 'contain';
+  eager?: boolean;
+  width?: number;
+  height?: number;
+  class?: string;
+  draggable?: 'true' | 'false';
+}
+const { src, alt, sizes, focus, fit = 'contain', eager = false, width, height, class: cls, draggable } = Astro.props;
+const v = variantsOf(src);
+const style = [
+  v && blurStyle(v.blur, fit),
+  focus && `object-position:${focus}`,
+].filter(Boolean).join(';') || undefined;
+---
+{/* La miniatura serve solo finché la foto non arriva: dopo, una foto con trasparenza la lascerebbe intravedere. */}
+<img
+  src={src}
+  srcset={v?.srcset}
+  sizes={v ? sizes : undefined}
+  alt={alt}
+  width={width}
+  height={height}
+  class={cls}
+  draggable={draggable}
+  loading={eager ? undefined : 'lazy'}
+  decoding="async"
+  fetchpriority={eager ? 'high' : undefined}
+  style={style}
+  onload={v ? BLUR_ONLOAD : undefined}
+/>
