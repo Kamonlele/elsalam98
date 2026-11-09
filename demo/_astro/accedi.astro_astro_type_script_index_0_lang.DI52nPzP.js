@@ -1,1 +1,0 @@
-import{n as e}from"./ui.9nQCS_HP.js";var t=document.getElementById(`login`);e(t,`/api/admin/session`,`POST`,()=>{location.href=t.dataset.next??`/admin`});

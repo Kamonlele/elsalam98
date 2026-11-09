@@ -1,1 +1,0 @@
-import{t as e}from"./ui.9nQCS_HP.js";document.getElementById(`logout`)?.addEventListener(`click`,async()=>{await e(`/api/admin/session`,{method:`DELETE`}).catch(()=>null),location.href=`/admin/accedi`});

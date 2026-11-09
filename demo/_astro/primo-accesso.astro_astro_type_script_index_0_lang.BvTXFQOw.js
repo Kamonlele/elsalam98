@@ -1,1 +1,0 @@
-import{n as e}from"./ui.9nQCS_HP.js";e(document.getElementById(`setup`),`/api/admin/setup`,`POST`,()=>{location.href=`/admin`});
